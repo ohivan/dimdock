@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using DimDock.Interop;
 using Microsoft.Win32;
 
@@ -16,6 +17,8 @@ public sealed class SystemThemeService
 {
     private const string PersonalizeKey = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const string AccentKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent";
+
+    private static readonly BitmapSource NoiseBitmap = CreateNoiseBitmap(128);
 
     public ThemeSnapshot Current { get; private set; }
 
@@ -43,19 +46,28 @@ public sealed class SystemThemeService
         resources["DimAccentHoverBrush"] = new SolidColorBrush(snapshot.AccentHoverColor);
         resources["DimAccentPressedBrush"] = new SolidColorBrush(snapshot.AccentPressedColor);
 
+        var noiseBrush = new ImageBrush(NoiseBitmap)
+        {
+            TileMode = TileMode.Tile,
+            Viewport = new Rect(0, 0, NoiseBitmap.PixelWidth, NoiseBitmap.PixelHeight),
+            ViewportUnits = BrushMappingMode.Absolute,
+            Stretch = Stretch.None,
+            Opacity = snapshot.IsAppDark ? 0.032 : 0.022
+        };
+        noiseBrush.Freeze();
+        resources["DimAcrylicNoiseBrush"] = noiseBrush;
+
         if (snapshot.IsAppDark)
         {
             resources["DimTextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0xF3, 0xF3, 0xF3));
             resources["DimTextSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
             resources["DimTextMutedBrush"] = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
-            resources["DimSliderTrackBrush"] = new SolidColorBrush(Color.FromArgb(0x75, 0xFF, 0xFF, 0xFF));
-            resources["DimThumbOuterBrush"] = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45));
-            resources["DimThumbBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
-            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
             // Match Windows 11 Quick Settings / Notification Center deep charcoal Acrylic (~#242424 body, ~#1C1C1C footer)
-            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xCC, 0x1E, 0x1E, 0x1E));
-            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x70, 0x12, 0x12, 0x12));
-            resources["DimFlyoutBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF));
+            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xC8, 0x1E, 0x1E, 0x1E));
+            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x6E, 0x12, 0x12, 0x12));
+            resources["DimFooterShadowBrush"] = CreateFooterShadowBrush(
+                topColor: Color.FromArgb(0x4A, 0x00, 0x00, 0x00),
+                midColor: Color.FromArgb(0x16, 0x00, 0x00, 0x00));
             resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
         }
         else
@@ -63,15 +75,46 @@ public sealed class SystemThemeService
             resources["DimTextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0x1B, 0x1B, 0x1B));
             resources["DimTextSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xB8, 0x00, 0x00, 0x00));
             resources["DimTextMutedBrush"] = new SolidColorBrush(Color.FromArgb(0x88, 0x00, 0x00, 0x00));
-            resources["DimSliderTrackBrush"] = new SolidColorBrush(Color.FromArgb(0x4D, 0x00, 0x00, 0x00));
-            resources["DimThumbOuterBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
-            resources["DimThumbBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x22, 0x00, 0x00, 0x00));
-            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0x00, 0x00, 0x00));
-            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xCC, 0xF3, 0xF3, 0xF3));
-            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0x00, 0x00, 0x00));
-            resources["DimFlyoutBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0x00, 0x00, 0x00));
+            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xC8, 0xF3, 0xF3, 0xF3));
+            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x12, 0x00, 0x00, 0x00));
+            resources["DimFooterShadowBrush"] = CreateFooterShadowBrush(
+                topColor: Color.FromArgb(0x1C, 0x00, 0x00, 0x00),
+                midColor: Color.FromArgb(0x08, 0x00, 0x00, 0x00));
             resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x0E, 0x00, 0x00, 0x00));
         }
+    }
+
+    private static LinearGradientBrush CreateFooterShadowBrush(Color topColor, Color midColor)
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(0, 1)
+        };
+        brush.GradientStops.Add(new GradientStop(topColor, 0.0));
+        brush.GradientStops.Add(new GradientStop(midColor, 0.25));
+        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 1.0));
+        brush.Freeze();
+        return brush;
+    }
+
+    private static BitmapSource CreateNoiseBitmap(int size)
+    {
+        byte[] pixels = new byte[size * size * 4];
+        var rng = new Random(0xD1AD0C);
+
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            byte v = (byte)rng.Next(256);
+            pixels[i] = v;     // B
+            pixels[i + 1] = v; // G
+            pixels[i + 2] = v; // R
+            pixels[i + 3] = 255;
+        }
+
+        var bitmap = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, pixels, size * 4);
+        bitmap.Freeze();
+        return bitmap;
     }
 
     private static ThemeSnapshot ReadSnapshot()

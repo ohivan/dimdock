@@ -26,139 +26,148 @@
         </Border.RenderTransform>
 
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+            <!-- Subtle frosted Acrylic noise texture matching Windows 11 Shell flyouts -->
+            <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"
+                       IsHitTestVisible="False" />
 
-            <!-- Monitors List -->
-            <ScrollViewer Grid.Row="0"
-                          MaxHeight="420"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
-                <Grid Margin="20,18,20,6">
-                    <!-- Populated Monitor Rows -->
-                    <ItemsControl x:Name="MonitorsList">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,0,0,16"
-                                      Background="Transparent"
-                                      PreviewMouseWheel="OnMonitorRowMouseWheel">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                                    <!-- Monitor Icon + Name -->
-                                    <StackPanel Grid.Row="0"
-                                                Orientation="Horizontal"
-                                                Margin="0,0,0,8">
-                                        <TextBlock Text="&#xE7F4;"
-                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   FontSize="20"
-                                                   Foreground="{DynamicResource DimTextPrimaryBrush}"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding DisplayName}"
-                                                   FontSize="14.5"
-                                                   FontWeight="Normal"
-                                                   Foreground="{DynamicResource DimTextPrimaryBrush}"
-                                                   Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="270" />
-                                    </StackPanel>
+                <!-- Monitors List -->
+                <ScrollViewer Grid.Row="0"
+                              MaxHeight="420"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="20,18,20,6">
+                        <!-- Populated Monitor Rows -->
+                        <ItemsControl x:Name="MonitorsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,16"
+                                          Background="Transparent"
+                                          PreviewMouseWheel="OnMonitorRowMouseWheel">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
 
-                                    <!-- Brightness Slider + Numeric Readout -->
-                                    <Grid Grid.Row="1">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="46" />
-                                        </Grid.ColumnDefinitions>
+                                        <!-- Monitor Icon + Name -->
+                                        <StackPanel Grid.Row="0"
+                                                    Orientation="Horizontal"
+                                                    Margin="0,0,0,8">
+                                            <TextBlock Text="&#xE7F4;"
+                                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="20"
+                                                       Foreground="{DynamicResource DimTextPrimaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontSize="14.5"
+                                                       FontWeight="Normal"
+                                                       Foreground="{DynamicResource DimTextPrimaryBrush}"
+                                                       Margin="10,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="270" />
+                                        </StackPanel>
 
-                                        <Slider Grid.Column="0"
-                                                Style="{StaticResource DimDockSliderStyle}"
-                                                Value="{Binding Brightness, Mode=OneWay}"
-                                                PreviewMouseLeftButtonDown="OnSliderPreviewMouseLeftButtonDown"
-                                                ValueChanged="OnSliderValueChanged" />
+                                        <!-- Built-in .NET 10 Fluent Slider + Numeric Readout -->
+                                        <Grid Grid.Row="1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="46" />
+                                            </Grid.ColumnDefinitions>
 
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding Brightness}"
-                                                   FontSize="20"
-                                                   FontWeight="Normal"
-                                                   Foreground="{DynamicResource DimTextPrimaryBrush}"
-                                                   HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center"
-                                                   Typography.NumeralAlignment="Tabular" />
+                                            <Slider Grid.Column="0"
+                                                    Minimum="0"
+                                                    Maximum="100"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickFrequency="1"
+                                                    IsMoveToPointEnabled="True"
+                                                    VerticalAlignment="Center"
+                                                    Value="{Binding Brightness, Mode=OneWay}"
+                                                    PreviewMouseLeftButtonDown="OnSliderPreviewMouseLeftButtonDown"
+                                                    ValueChanged="OnSliderValueChanged" />
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Brightness}"
+                                                       FontSize="20"
+                                                       FontWeight="Normal"
+                                                       Foreground="{DynamicResource DimTextPrimaryBrush}"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Typography.NumeralAlignment="Tabular" />
+                                        </Grid>
                                     </Grid>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                    <!-- Empty State -->
-                    <StackPanel x:Name="EmptyStatePanel"
-                                Visibility="Collapsed"
-                                Margin="0,6,0,14"
-                                HorizontalAlignment="Center">
-                        <TextBlock Text="&#xE7F4;"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="26"
-                                   Foreground="{DynamicResource DimTextMutedBrush}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,0,0,8" />
-                        <TextBlock Text="No DDC/CI monitors detected"
-                                   FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource DimTextPrimaryBrush}"
-                                   HorizontalAlignment="Center" />
-                        <TextBlock Text="Ensure DDC/CI is enabled in your monitor's OSD menu."
-                                   FontSize="12"
-                                   Foreground="{DynamicResource DimTextMutedBrush}"
-                                   TextAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,12" />
-                        <Button Content="Refresh monitors"
-                                Style="{StaticResource DimDockActionButtonStyle}"
-                                HorizontalAlignment="Center"
-                                Click="OnRefreshButtonClick" />
-                    </StackPanel>
+                        <!-- Empty State -->
+                        <StackPanel x:Name="EmptyStatePanel"
+                                    Visibility="Collapsed"
+                                    Margin="0,6,0,14"
+                                    HorizontalAlignment="Center">
+                            <TextBlock Text="&#xE7F4;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="26"
+                                       Foreground="{DynamicResource DimTextMutedBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,8" />
+                            <TextBlock Text="No DDC/CI monitors detected"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource DimTextPrimaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Ensure DDC/CI is enabled in your monitor's OSD menu."
+                                       FontSize="12"
+                                       Foreground="{DynamicResource DimTextMutedBrush}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,12" />
+                            <Button Content="Refresh monitors"
+                                    HorizontalAlignment="Center"
+                                    Click="OnRefreshButtonClick" />
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Footer (49px total matching Windows 11 Quick Settings, with soft recessed shadow instead of a bright stroke) -->
+                <Grid Grid.Row="1"
+                      Height="49"
+                      Background="{DynamicResource DimFooterTintBrush}">
+                    <!-- Soft recessed top shadow edge -->
+                    <Rectangle Height="6"
+                               VerticalAlignment="Top"
+                               IsHitTestVisible="False"
+                               Fill="{DynamicResource DimFooterShadowBrush}" />
+
+                    <Grid Margin="20,0,14,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="Adjust Brightness"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource DimTextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+
+                        <ToggleButton x:Name="LinkToggleButton"
+                                      Grid.Column="1"
+                                      Style="{StaticResource DimDockFooterToggleStyle}"
+                                      ToolTip="Link all monitors"
+                                      Click="OnLinkToggleClicked">
+                            <TextBlock Text="&#xE71B;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="14" />
+                        </ToggleButton>
+                    </Grid>
                 </Grid>
-            </ScrollViewer>
-
-            <!-- Subtle Divider -->
-            <Border Grid.Row="1"
-                    Height="1"
-                    Background="{DynamicResource DimDividerBrush}" />
-
-            <!-- Footer (48px + 1px divider = 49px, matching Windows 11 Quick Settings) -->
-            <Border Grid.Row="2"
-                    Height="48"
-                    Background="{DynamicResource DimFooterTintBrush}"
-                    Padding="20,0,14,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Column="0"
-                               Text="Adjust Brightness"
-                               FontSize="13"
-                               Foreground="{DynamicResource DimTextSecondaryBrush}"
-                               VerticalAlignment="Center" />
-
-                    <ToggleButton x:Name="LinkToggleButton"
-                                  Grid.Column="1"
-                                  Style="{StaticResource DimDockFooterToggleStyle}"
-                                  ToolTip="Link all monitors"
-                                  Click="OnLinkToggleClicked">
-                        <TextBlock Text="&#xE71B;"
-                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                   FontSize="14" />
-                    </ToggleButton>
-                </Grid>
-            </Border>
+            </Grid>
         </Grid>
     </Border>
 </Window>
