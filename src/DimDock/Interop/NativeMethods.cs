@@ -13,6 +13,8 @@ internal static class NativeMethods
     public const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
     public const int NIN_SELECT = 0x0400;
     public const int NIN_KEYSELECT = 0x0401;
+    public const int NIN_POPUPOPEN = 0x0406;
+    public const int NIN_POPUPCLOSE = 0x0407;
 
     // Shell_NotifyIcon
     public const uint NIM_ADD = 0x00000000;

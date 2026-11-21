@@ -94,21 +94,35 @@ public partial class App : Application
             _contextMenu.ShowAtCursor();
         };
 
+        _trayIconService.HoverOpened += (_, _) =>
+        {
+            if (!_flyoutWindow.IsVisible)
+            {
+                _toastWindow.ShowHover(_brightnessController.GetTraySummaryPercent());
+            }
+        };
+
+        _trayIconService.HoverClosed += (_, _) =>
+        {
+            _toastWindow.FadeOut();
+        };
+
         _trayIconService.ExternalActivateRequested += (_, _) => _flyoutWindow.ShowFlyout();
         _trayIconService.SystemThemeChanged += (_, _) => HandleThemeChanged();
 
         _scrollHookService.TrayScrolled += (_, notches) =>
         {
             int? summary = _brightnessController.StepTrayBrightness(notches);
-            if (summary.HasValue && !_flyoutWindow.IsVisible)
+            if (!_flyoutWindow.IsVisible)
             {
-                _toastWindow.ShowBrightness(summary.Value);
+                _toastWindow.ShowFromScroll(summary);
             }
         };
 
-        _brightnessController.BrightnessSummaryChanged += (_, _) =>
+        _brightnessController.BrightnessSummaryChanged += (_, summary) =>
         {
             _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
+            _toastWindow.UpdateIfVisible(summary);
         };
 
         SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;

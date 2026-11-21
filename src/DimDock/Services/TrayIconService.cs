@@ -48,6 +48,8 @@ public sealed class TrayIconService : IDisposable
 
     public event EventHandler? LeftClicked;
     public event EventHandler? RightClicked;
+    public event EventHandler? HoverOpened;
+    public event EventHandler? HoverClosed;
     public event EventHandler? SystemThemeChanged;
     public event EventHandler? ExternalActivateRequested;
 
@@ -58,7 +60,7 @@ public sealed class TrayIconService : IDisposable
         if (!_iconAdded) return;
 
         var nid = CreateBaseData();
-        nid.uFlags = NativeMethods.NIF_TIP | NativeMethods.NIF_SHOWTIP;
+        nid.uFlags = NativeMethods.NIF_TIP;
         nid.szTip = _tooltip;
         NativeMethods.Shell_NotifyIconW(NativeMethods.NIM_MODIFY, ref nid);
     }
@@ -75,7 +77,7 @@ public sealed class TrayIconService : IDisposable
         if (_iconAdded)
         {
             var nid = CreateBaseData();
-            nid.uFlags = NativeMethods.NIF_ICON | NativeMethods.NIF_SHOWTIP;
+            nid.uFlags = NativeMethods.NIF_ICON;
             nid.hIcon = _hIcon;
             NativeMethods.Shell_NotifyIconW(NativeMethods.NIM_MODIFY, ref nid);
         }
@@ -105,7 +107,8 @@ public sealed class TrayIconService : IDisposable
     private void AddOrUpdateIcon(bool isAdd)
     {
         var nid = CreateBaseData();
-        nid.uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP | NativeMethods.NIF_SHOWTIP;
+        // Omit NIF_SHOWTIP so Windows suppresses its native tooltip and sends NIN_POPUPOPEN/NIN_POPUPCLOSE instead.
+        nid.uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP;
         nid.uCallbackMessage = WmTrayCallback;
         nid.hIcon = _hIcon;
         nid.szTip = _tooltip;
@@ -146,6 +149,14 @@ public sealed class TrayIconService : IDisposable
                     break;
                 case NativeMethods.WM_CONTEXTMENU:
                     RightClicked?.Invoke(this, EventArgs.Empty);
+                    handled = true;
+                    break;
+                case NativeMethods.NIN_POPUPOPEN:
+                    HoverOpened?.Invoke(this, EventArgs.Empty);
+                    handled = true;
+                    break;
+                case NativeMethods.NIN_POPUPCLOSE:
+                    HoverClosed?.Invoke(this, EventArgs.Empty);
                     handled = true;
                     break;
             }
