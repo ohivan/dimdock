@@ -16,8 +16,9 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
 
+    <!-- Optical padding (11,5,12,7) compensates for Segoe UI's asymmetric ascender/descender box and capital-D sidebearing -->
     <Border Margin="8"
-            Padding="12,6"
+            Padding="11,5,12,7"
             CornerRadius="6"
             Background="{DynamicResource DimToastBgBrush}"
             BorderBrush="{DynamicResource DimToastBorderBrush}"
@@ -30,19 +31,14 @@
                               Direction="270" />
         </Border.Effect>
 
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="DimDock"
-                       FontSize="13.5"
-                       FontWeight="Normal"
-                       Foreground="{DynamicResource DimTextPrimaryBrush}"
-                       VerticalAlignment="Center" />
-            <TextBlock x:Name="PercentText"
-                       Text="(50%)"
-                       FontSize="12"
-                       Foreground="{DynamicResource DimTextSecondaryBrush}"
-                       Margin="6,0,0,0"
-                       VerticalAlignment="Center"
-                       Typography.NumeralAlignment="Tabular" />
-        </StackPanel>
+        <TextBlock VerticalAlignment="Center"
+                   Typography.NumeralAlignment="Tabular">
+            <Run Text="DimDock"
+                 FontSize="13.5"
+                 Foreground="{DynamicResource DimTextPrimaryBrush}" /><Run x:Name="PercentRun"
+                 Text="&#x2002;(50%)"
+                 FontSize="12"
+                 Foreground="{DynamicResource DimTextSecondaryBrush}" />
+        </TextBlock>
     </Border>
 </Window>

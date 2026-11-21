@@ -164,21 +164,13 @@ public partial class TrayToastWindow : Window
 
     private void ApplyText(int? percent)
     {
-        if (percent.HasValue)
+        string formatted = percent.HasValue
+            ? $"\u2002({Math.Clamp(percent.Value, 0, 100)}%)"
+            : string.Empty;
+
+        if (PercentRun.Text != formatted)
         {
-            string formatted = $"({Math.Clamp(percent.Value, 0, 100)}%)";
-            if (PercentText.Text != formatted)
-            {
-                PercentText.Text = formatted;
-            }
-            if (PercentText.Visibility != Visibility.Visible)
-            {
-                PercentText.Visibility = Visibility.Visible;
-            }
-        }
-        else if (PercentText.Visibility != Visibility.Collapsed)
-        {
-            PercentText.Visibility = Visibility.Collapsed;
+            PercentRun.Text = formatted;
         }
     }
 
