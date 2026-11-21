@@ -23,7 +23,6 @@ public partial class App : Application
     private TrayIconService? _trayIconService;
     private TrayScrollHookService? _scrollHookService;
     private FlyoutWindow? _flyoutWindow;
-    private TrayToastWindow? _toastWindow;
     private TrayContextMenu? _contextMenu;
     private DispatcherTimer? _rescanDebounceTimer;
 
@@ -59,7 +58,6 @@ public partial class App : Application
 
         _trayIconService = new TrayIconService(_themeService.Current.IsTaskbarDark, _activateMessage);
         _flyoutWindow = new FlyoutWindow(_brightnessController, _trayIconService, _themeService);
-        _toastWindow = new TrayToastWindow(_trayIconService);
         _scrollHookService = new TrayScrollHookService(_trayIconService, Dispatcher);
 
         _contextMenu = new TrayContextMenu(
@@ -81,30 +79,12 @@ public partial class App : Application
         };
 
         // Wire events
-        _trayIconService.LeftClicked += (_, _) =>
-        {
-            _toastWindow.HideImmediately();
-            _flyoutWindow.ToggleFromTray();
-        };
+        _trayIconService.LeftClicked += (_, _) => _flyoutWindow.ToggleFromTray();
 
         _trayIconService.RightClicked += (_, _) =>
         {
             _flyoutWindow.HideFlyout();
-            _toastWindow.HideImmediately();
             _contextMenu.ShowAtCursor();
-        };
-
-        _trayIconService.HoverOpened += (_, _) =>
-        {
-            if (!_flyoutWindow.IsVisible)
-            {
-                _toastWindow.ShowHover(_brightnessController.GetTraySummaryPercent());
-            }
-        };
-
-        _trayIconService.HoverClosed += (_, _) =>
-        {
-            _toastWindow.OnHoverClosed();
         };
 
         _trayIconService.ExternalActivateRequested += (_, _) => _flyoutWindow.ShowFlyout();
@@ -112,24 +92,19 @@ public partial class App : Application
 
         _scrollHookService.TrayScrolled += (_, notches) =>
         {
-            int? summary = _brightnessController.StepTrayBrightness(notches);
-            if (!_flyoutWindow.IsVisible)
-            {
-                _toastWindow.ShowFromScroll(summary);
-            }
+            _brightnessController.StepTrayBrightness(notches);
         };
 
-        _brightnessController.BrightnessSummaryChanged += (_, summary) =>
+        _brightnessController.BrightnessSummaryChanged += (_, _) =>
         {
-            // Keep our custom TrayToastWindow in sync without firing Shell_NotifyIconW(NIM_MODIFY),
-            // which causes Windows Explorer to emit a spurious NIN_POPUPCLOSE mid-scroll.
-            _toastWindow.UpdateIfVisible(summary);
+            _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
         };
 
         SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
         await _brightnessController.RefreshMonitorsAsync();
+        _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
     }
 
     private void HandleThemeChanged()
@@ -171,7 +146,6 @@ public partial class App : Application
 
         _rescanDebounceTimer?.Stop();
         _scrollHookService?.Dispose();
-        _toastWindow?.ForceClose();
         _flyoutWindow?.ForceClose();
         _trayIconService?.Dispose();
         _brightnessController?.Dispose();

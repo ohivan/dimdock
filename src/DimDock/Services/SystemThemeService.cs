@@ -54,8 +54,6 @@ public sealed class SystemThemeService
             resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x46, 0x12, 0x12, 0x12));
             resources["DimFlyoutBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF));
             resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x16, 0xFF, 0xFF, 0xFF));
-            resources["DimToastBgBrush"] = new SolidColorBrush(Color.FromArgb(0xEB, 0x24, 0x24, 0x24));
-            resources["DimToastBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
         }
         else
         {
@@ -70,8 +68,6 @@ public sealed class SystemThemeService
             resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0x24, 0x00, 0x00, 0x00));
             resources["DimFlyoutBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x18, 0x00, 0x00, 0x00));
             resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x0E, 0x00, 0x00, 0x00));
-            resources["DimToastBgBrush"] = new SolidColorBrush(Color.FromArgb(0xEE, 0xF6, 0xF6, 0xF6));
-            resources["DimToastBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x1E, 0x00, 0x00, 0x00));
         }
     }
 
