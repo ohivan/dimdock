@@ -13,14 +13,17 @@ public partial class TrayToastWindow : Window
     private readonly TrayIconService _trayIconService;
     private readonly DispatcherTimer _hideTimer;
     private bool _isHoverPinned;
+    private bool _isShown;
     private bool _isClosing;
+    private int _animGeneration;
+    private DateTime _lastScrollUtc = DateTime.MinValue;
 
     public TrayToastWindow(TrayIconService trayIconService)
     {
         InitializeComponent();
 
         _trayIconService = trayIconService;
-        _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1250) };
+        _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
         _hideTimer.Tick += OnHideTimerTick;
     }
 
@@ -28,12 +31,13 @@ public partial class TrayToastWindow : Window
     {
         _isHoverPinned = true;
         _hideTimer.Stop();
-        ShowPill(percent);
+        EnsureVisibleAndUpdate(percent);
     }
 
     public void ShowFromScroll(int? percent)
     {
-        ShowPill(percent);
+        _lastScrollUtc = DateTime.UtcNow;
+        EnsureVisibleAndUpdate(percent);
 
         if (!_isHoverPinned)
         {
@@ -44,10 +48,19 @@ public partial class TrayToastWindow : Window
 
     public void UpdateIfVisible(int? percent)
     {
-        if (!IsVisible) return;
+        if (!_isShown || !IsVisible) return;
         ApplyText(percent);
-        UpdateLayout();
-        PositionAboveTrayIcon();
+    }
+
+    public void OnHoverClosed()
+    {
+        // Ignore spurious close signals while cursor is still hovering/scrolling on the icon.
+        if ((DateTime.UtcNow - _lastScrollUtc).TotalMilliseconds < 300 && IsCursorOverTrayIcon())
+        {
+            return;
+        }
+
+        FadeOut();
     }
 
     public void FadeOut()
@@ -55,12 +68,21 @@ public partial class TrayToastWindow : Window
         _isHoverPinned = false;
         _hideTimer.Stop();
 
-        if (!IsVisible) return;
+        if (!_isShown || !IsVisible) return;
 
-        var fadeOut = new DoubleAnimation(Opacity, 0.0, TimeSpan.FromMilliseconds(150));
+        _isShown = false;
+        int gen = ++_animGeneration;
+        double startOpacity = Opacity;
+
+        // Set local value to 0 and animate with FillBehavior.Stop so no stale animation lingers.
+        Opacity = 0.0;
+        var fadeOut = new DoubleAnimation(startOpacity, 0.0, TimeSpan.FromMilliseconds(140))
+        {
+            FillBehavior = FillBehavior.Stop
+        };
         fadeOut.Completed += (_, _) =>
         {
-            if (!_isHoverPinned && !_hideTimer.IsEnabled && Opacity <= 0.01)
+            if (gen == _animGeneration && !_isShown)
             {
                 Hide();
             }
@@ -71,8 +93,11 @@ public partial class TrayToastWindow : Window
     public void HideImmediately()
     {
         _isHoverPinned = false;
+        _isShown = false;
+        _animGeneration++;
         _hideTimer.Stop();
         BeginAnimation(OpacityProperty, null);
+        Opacity = 0.0;
         if (IsVisible) Hide();
     }
 
@@ -105,21 +130,35 @@ public partial class TrayToastWindow : Window
         base.OnClosing(e);
     }
 
-    private void ShowPill(int? percent)
+    private void EnsureVisibleAndUpdate(int? percent)
     {
         ApplyText(percent);
-        BeginAnimation(OpacityProperty, null);
+
+        // Already shown and fully visible: update text in-place with zero animation/re-layout flicker.
+        if (_isShown && IsVisible)
+        {
+            return;
+        }
+
+        _isShown = true;
+        _animGeneration++;
+
+        double startOpacity = IsVisible ? Opacity : 0.0;
 
         if (!IsVisible)
         {
-            Opacity = 0;
+            Opacity = 0.0;
             Show();
+            UpdateLayout();
+            PositionAboveTrayIcon();
         }
 
-        UpdateLayout();
-        PositionAboveTrayIcon();
-
-        var fadeIn = new DoubleAnimation(Opacity, 1.0, TimeSpan.FromMilliseconds(90));
+        // Set local Opacity = 1.0 BEFORE starting the Stop-behavior fade-in so it never snaps back to 0.
+        Opacity = 1.0;
+        var fadeIn = new DoubleAnimation(startOpacity, 1.0, TimeSpan.FromMilliseconds(90))
+        {
+            FillBehavior = FillBehavior.Stop
+        };
         BeginAnimation(OpacityProperty, fadeIn);
     }
 
@@ -127,10 +166,17 @@ public partial class TrayToastWindow : Window
     {
         if (percent.HasValue)
         {
-            PercentText.Text = $"({Math.Clamp(percent.Value, 0, 100)}%)";
-            PercentText.Visibility = Visibility.Visible;
+            string formatted = $"({Math.Clamp(percent.Value, 0, 100)}%)";
+            if (PercentText.Text != formatted)
+            {
+                PercentText.Text = formatted;
+            }
+            if (PercentText.Visibility != Visibility.Visible)
+            {
+                PercentText.Visibility = Visibility.Visible;
+            }
         }
-        else
+        else if (PercentText.Visibility != Visibility.Collapsed)
         {
             PercentText.Visibility = Visibility.Collapsed;
         }
@@ -138,7 +184,6 @@ public partial class TrayToastWindow : Window
 
     private void OnHideTimerTick(object? sender, EventArgs e)
     {
-        // Keep visible if the user is still hovering directly over the tray icon.
         if (_isHoverPinned || IsCursorOverTrayIcon())
         {
             return;

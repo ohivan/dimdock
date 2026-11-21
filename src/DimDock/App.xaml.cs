@@ -104,7 +104,7 @@ public partial class App : Application
 
         _trayIconService.HoverClosed += (_, _) =>
         {
-            _toastWindow.FadeOut();
+            _toastWindow.OnHoverClosed();
         };
 
         _trayIconService.ExternalActivateRequested += (_, _) => _flyoutWindow.ShowFlyout();
@@ -121,7 +121,8 @@ public partial class App : Application
 
         _brightnessController.BrightnessSummaryChanged += (_, summary) =>
         {
-            _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
+            // Keep our custom TrayToastWindow in sync without firing Shell_NotifyIconW(NIM_MODIFY),
+            // which causes Windows Explorer to emit a spurious NIN_POPUPCLOSE mid-scroll.
             _toastWindow.UpdateIfVisible(summary);
         };
 
@@ -129,7 +130,6 @@ public partial class App : Application
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
         await _brightnessController.RefreshMonitorsAsync();
-        _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
     }
 
     private void HandleThemeChanged()
