@@ -112,15 +112,16 @@
         <Setter Property="Focusable" Value="False" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Height" Value="20" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RepeatButton">
-                    <Grid Background="Transparent" Height="24">
+                    <Grid Background="Transparent" Height="20">
                         <Border Height="4"
                                 CornerRadius="2,0,0,2"
                                 Background="{DynamicResource DimAccentBrush}"
                                 VerticalAlignment="Center"
-                                Margin="2,0,0,0" />
+                                Margin="2,0,-3,0" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -133,10 +134,17 @@
         <Setter Property="Focusable" Value="False" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Height" Value="20" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RepeatButton">
-                    <Border Background="Transparent" Height="24" />
+                    <Grid Background="Transparent" Height="20">
+                        <Border Height="4"
+                                CornerRadius="0,2,2,0"
+                                Background="{DynamicResource DimSliderTrackBrush}"
+                                VerticalAlignment="Center"
+                                Margin="-3,0,2,0" />
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -154,15 +162,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
-                    <Grid VerticalAlignment="Center" Background="Transparent">
-                        <!-- Full inactive track -->
-                        <Border Height="4"
-                                CornerRadius="2"
-                                Background="{DynamicResource DimSliderTrackBrush}"
-                                VerticalAlignment="Center"
-                                Margin="2,0" />
-
-                        <Track x:Name="PART_Track" VerticalAlignment="Center">
+                    <Grid VerticalAlignment="Center" Background="Transparent" Height="28">
+                        <Track x:Name="PART_Track" VerticalAlignment="Center" Height="20">
                             <Track.DecreaseRepeatButton>
                                 <RepeatButton Command="Slider.DecreaseLarge"
                                               Style="{StaticResource DimDockDecreaseRepeatButtonStyle}" />
