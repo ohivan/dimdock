@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DimDock/DimDock.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DimDock.Tests/DimDock.Tests.csproj" />
+  </Folder>
+</Solution>
