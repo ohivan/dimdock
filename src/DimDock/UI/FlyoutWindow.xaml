@@ -79,6 +79,7 @@
                                         <Slider Grid.Column="0"
                                                 Style="{StaticResource DimDockSliderStyle}"
                                                 Value="{Binding Brightness, Mode=OneWay}"
+                                                PreviewMouseLeftButtonDown="OnSliderPreviewMouseLeftButtonDown"
                                                 ValueChanged="OnSliderValueChanged" />
 
                                         <TextBlock Grid.Column="1"

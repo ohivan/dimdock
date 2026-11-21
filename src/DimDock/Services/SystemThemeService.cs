@@ -9,7 +9,8 @@ public sealed record ThemeSnapshot(
     bool IsAppDark,
     bool IsTaskbarDark,
     Color AccentColor,
-    Color AccentHoverColor);
+    Color AccentHoverColor,
+    Color AccentPressedColor);
 
 public sealed class SystemThemeService
 {
@@ -40,6 +41,7 @@ public sealed class SystemThemeService
         var resources = app.Resources;
         resources["DimAccentBrush"] = new SolidColorBrush(snapshot.AccentColor);
         resources["DimAccentHoverBrush"] = new SolidColorBrush(snapshot.AccentHoverColor);
+        resources["DimAccentPressedBrush"] = new SolidColorBrush(snapshot.AccentPressedColor);
 
         if (snapshot.IsAppDark)
         {
@@ -94,11 +96,11 @@ public sealed class SystemThemeService
             // Default to Windows 11 dark appearance.
         }
 
-        var (accent, hover) = ReadAccentColors(isAppDark);
-        return new ThemeSnapshot(isAppDark, isTaskbarDark, accent, hover);
+        var (accent, hover, pressed) = ReadAccentColors(isAppDark);
+        return new ThemeSnapshot(isAppDark, isTaskbarDark, accent, hover, pressed);
     }
 
-    private static (Color Accent, Color Hover) ReadAccentColors(bool isDark)
+    private static (Color Accent, Color Hover, Color Pressed) ReadAccentColors(bool isDark)
     {
         try
         {
@@ -108,6 +110,7 @@ public sealed class SystemThemeService
                 // AccentPalette layout: [0]=Light3, [1]=Light2, [2]=Light1, [3]=Base, [4]=Dark1, [5]=Dark2, [6]=Dark3
                 int mainIdx = isDark ? 1 : 4;
                 int hoverIdx = isDark ? 0 : 5;
+                int pressedIdx = isDark ? 2 : 6;
 
                 Color mainColor = Color.FromRgb(
                     palette[mainIdx * 4],
@@ -117,8 +120,12 @@ public sealed class SystemThemeService
                     palette[hoverIdx * 4],
                     palette[hoverIdx * 4 + 1],
                     palette[hoverIdx * 4 + 2]);
+                Color pressedColor = Color.FromRgb(
+                    palette[pressedIdx * 4],
+                    palette[pressedIdx * 4 + 1],
+                    palette[pressedIdx * 4 + 2]);
 
-                return (mainColor, hoverColor);
+                return (mainColor, hoverColor, pressedColor);
             }
         }
         catch
@@ -134,7 +141,7 @@ public sealed class SystemThemeService
                 byte g = (byte)((argb >> 8) & 0xFF);
                 byte b = (byte)(argb & 0xFF);
                 var baseColor = Color.FromRgb(r, g, b);
-                return (baseColor, baseColor);
+                return (baseColor, baseColor, baseColor);
             }
         }
         catch
@@ -143,7 +150,7 @@ public sealed class SystemThemeService
         }
 
         return isDark
-            ? (Color.FromRgb(0x4C, 0xC2, 0xFF), Color.FromRgb(0x6C, 0xD0, 0xFF))
-            : (Color.FromRgb(0x00, 0x5F, 0xB8), Color.FromRgb(0x00, 0x4E, 0x98));
+            ? (Color.FromRgb(0x4C, 0xC2, 0xFF), Color.FromRgb(0x6C, 0xD0, 0xFF), Color.FromRgb(0x37, 0xA8, 0xE6))
+            : (Color.FromRgb(0x00, 0x5F, 0xB8), Color.FromRgb(0x00, 0x4E, 0x98), Color.FromRgb(0x00, 0x3E, 0x7A));
     }
 }

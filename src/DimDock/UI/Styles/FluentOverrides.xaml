@@ -1,7 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- WinUI 3 Style Brightness Slider -->
+    <CubicEase x:Key="DimEaseOut" EasingMode="EaseOut" />
+
+    <!-- WinUI 3 Style Brightness Slider Thumb (12px rest -> 15.4px hover -> 9.4px drag) -->
     <Style x:Key="DimDockSliderThumbStyle" TargetType="Thumb">
         <Setter Property="Width" Value="20" />
         <Setter Property="Height" Value="20" />
@@ -19,8 +21,8 @@
                                  StrokeThickness="1" />
                         <!-- Inner accent dot -->
                         <Ellipse x:Name="InnerDot"
-                                 Width="11"
-                                 Height="11"
+                                 Width="12"
+                                 Height="12"
                                  Fill="{DynamicResource DimAccentBrush}"
                                  RenderTransformOrigin="0.5,0.5">
                             <Ellipse.RenderTransform>
@@ -29,59 +31,75 @@
                         </Ellipse>
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="InnerDot" Property="Fill" Value="{DynamicResource DimAccentHoverBrush}" />
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleX"
-                                                         To="1.2" Duration="0:0:0.10" />
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleY"
-                                                         To="1.2" Duration="0:0:0.10" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleX"
-                                                         To="1.0" Duration="0:0:0.12" />
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleY"
-                                                         To="1.0" Duration="0:0:0.12" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <!-- State 1: Dragging / Pressed (shrinks cleanly to ~9.4px) -->
                         <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="InnerDot" Property="Fill" Value="{DynamicResource DimAccentPressedBrush}" />
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="DotScale"
                                                          Storyboard.TargetProperty="ScaleX"
-                                                         To="0.86" Duration="0:0:0.08" />
+                                                         To="0.78"
+                                                         Duration="0:0:0.09"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
                                         <DoubleAnimation Storyboard.TargetName="DotScale"
                                                          Storyboard.TargetProperty="ScaleY"
-                                                         To="0.86" Duration="0:0:0.08" />
+                                                         To="0.78"
+                                                         Duration="0:0:0.09"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
-                            <Trigger.ExitActions>
+                        </Trigger>
+
+                        <!-- State 2: Hover anywhere on parent Slider (expands noticeably to ~15.4px) -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Slider}}" Value="True" />
+                                <Condition Binding="{Binding IsDragging, RelativeSource={RelativeSource Self}}" Value="False" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="InnerDot" Property="Fill" Value="{DynamicResource DimAccentHoverBrush}" />
+                            <MultiDataTrigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="DotScale"
                                                          Storyboard.TargetProperty="ScaleX"
-                                                         To="1.0" Duration="0:0:0.10" />
+                                                         To="1.28"
+                                                         Duration="0:0:0.12"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
                                         <DoubleAnimation Storyboard.TargetName="DotScale"
                                                          Storyboard.TargetProperty="ScaleY"
-                                                         To="1.0" Duration="0:0:0.10" />
+                                                         To="1.28"
+                                                         Duration="0:0:0.12"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                            </MultiDataTrigger.EnterActions>
+                        </MultiDataTrigger>
+
+                        <!-- State 3: Rest (returns cleanly to 12px) -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Slider}}" Value="False" />
+                                <Condition Binding="{Binding IsDragging, RelativeSource={RelativeSource Self}}" Value="False" />
+                            </MultiDataTrigger.Conditions>
+                            <MultiDataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="DotScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         To="1.0"
+                                                         Duration="0:0:0.14"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
+                                        <DoubleAnimation Storyboard.TargetName="DotScale"
+                                                         Storyboard.TargetProperty="ScaleY"
+                                                         To="1.0"
+                                                         Duration="0:0:0.14"
+                                                         EasingFunction="{StaticResource DimEaseOut}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiDataTrigger.EnterActions>
+                        </MultiDataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -132,7 +150,6 @@
         <Setter Property="IsMoveToPointEnabled" Value="True" />
         <Setter Property="Height" Value="28" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -170,7 +187,6 @@
     <Style x:Key="DimDockFooterToggleStyle" TargetType="ToggleButton">
         <Setter Property="Width" Value="30" />
         <Setter Property="Height" Value="28" />
-        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Foreground" Value="{DynamicResource DimTextMutedBrush}" />
         <Setter Property="Background" Value="Transparent" />
@@ -202,7 +218,6 @@
     <Style x:Key="DimDockActionButtonStyle" TargetType="Button">
         <Setter Property="Padding" Value="14,6" />
         <Setter Property="FontSize" Value="12.5" />
-        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Foreground" Value="{DynamicResource DimTextPrimaryBrush}" />
         <Setter Property="Background" Value="{DynamicResource DimButtonHoverBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource DimFlyoutBorderBrush}" />

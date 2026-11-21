@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -259,6 +260,48 @@ public partial class FlyoutWindow : Window
             HideFlyout();
             e.Handled = true;
         }
+    }
+
+    private void OnSliderPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Slider slider || slider.Template.FindName("PART_Track", slider) is not Track track || track.Thumb is null)
+        {
+            return;
+        }
+
+        // If the user clicked directly on the thumb, let the Thumb handle drag natively.
+        if (IsDescendantOf(e.OriginalSource as DependencyObject, track.Thumb))
+        {
+            return;
+        }
+
+        // Click-anywhere-and-drag: jump to the clicked point, then hand off immediately to the Thumb
+        // so dragging continues smoothly without lifting the mouse button (matching Windows 11 Quick Settings).
+        double value = track.ValueFromPoint(e.GetPosition(track));
+        if (!double.IsNaN(value))
+        {
+            slider.Value = Math.Clamp(Math.Round(value), slider.Minimum, slider.Maximum);
+            slider.UpdateLayout();
+
+            e.Handled = true;
+            var forwarded = new MouseButtonEventArgs(e.MouseDevice, e.Timestamp, MouseButton.Left)
+            {
+                RoutedEvent = MouseLeftButtonDownEvent,
+                Source = track.Thumb
+            };
+            track.Thumb.RaiseEvent(forwarded);
+        }
+    }
+
+    private static bool IsDescendantOf(DependencyObject? source, DependencyObject ancestor)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, ancestor)) return true;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return false;
     }
 
     private void OnSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
