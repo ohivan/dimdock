@@ -131,10 +131,11 @@
                     Height="1"
                     Background="{DynamicResource DimDividerBrush}" />
 
-            <!-- Footer -->
+            <!-- Footer (48px + 1px divider = 49px, matching Windows 11 Quick Settings) -->
             <Border Grid.Row="2"
+                    Height="48"
                     Background="{DynamicResource DimFooterTintBrush}"
-                    Padding="20,11,14,11">
+                    Padding="20,0,14,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
