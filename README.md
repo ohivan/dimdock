@@ -8,6 +8,8 @@
 
 Windows 11 system tray utility for controlling external monitor brightness over hardware DDC/CI.
 
+**Website:** [dimdock.app](https://dimdock.app)
+
 > [!NOTE]
 > **External monitors only:** DimDock is for desktop setups with external DDC/CI monitors and does not control built-in laptop displays.
 
