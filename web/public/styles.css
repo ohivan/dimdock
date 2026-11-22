@@ -1618,21 +1618,6 @@ html.is-scrolled .scroll-progress {
   color: var(--text-secondary);
 }
 
-.benchmark-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid rgba(76, 194, 255, 0.28);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .benchmark-hero {
   display: flex;
   flex-direction: column;
@@ -2110,7 +2095,7 @@ html.anim-ready .features-grid.is-revealed .feature-card:hover .feature-icon {
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), filter 240ms ease;
 }
 
-/* Memory benchmark bars & badges */
+/* Memory benchmark bars */
 html.anim-ready .benchmark-grid .pixel-bar-cell.is-filled::after {
   opacity: 0;
   transition: opacity 80ms steps(1, end) calc(var(--bar-delay, 0ms) + var(--cell-idx, 0) * 14ms);
@@ -2118,19 +2103,6 @@ html.anim-ready .benchmark-grid .pixel-bar-cell.is-filled::after {
 
 html.anim-ready .benchmark-grid.is-revealed .pixel-bar-cell.is-filled::after {
   opacity: 1;
-}
-
-html.anim-ready .benchmark-grid .benchmark-badge {
-  opacity: 0;
-  transform: translate3d(0, 4px, 0) scale(0.95);
-  transition:
-    opacity 420ms ease var(--mult-delay, 460ms),
-    transform 460ms cubic-bezier(0.16, 1, 0.3, 1) var(--mult-delay, 460ms);
-}
-
-html.anim-ready .benchmark-grid.is-revealed .benchmark-badge {
-  opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
 }
 
 /* Settings list cascade inside revealed cards */
