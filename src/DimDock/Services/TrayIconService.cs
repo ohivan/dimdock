@@ -229,7 +229,7 @@ public sealed class TrayIconService : IDisposable
             ? Color.FromRgb(0xFF, 0xFF, 0xFF)
             : Color.FromRgb(0x1A, 0x1A, 0x1A);
 
-        var pen = new Pen(new SolidColorBrush(fg), 1.5 * s)
+        var pen = new Pen(new SolidColorBrush(fg), 1.45 * s)
         {
             StartLineCap = PenLineCap.Flat,
             EndLineCap = PenLineCap.Flat
@@ -240,10 +240,11 @@ public sealed class TrayIconService : IDisposable
         using (var dc = visual.RenderOpen())
         {
             double center = size / 2.0;
-            double ringRadius = 2.75 * s;
-            double rayInner = 4.8 * s;
-            // 0% shows clearly visible short rays (~12.4px span); 100% fills the full 16px frame edge-to-edge (~15.8px).
-            double rayOuter = (6.2 + (7.9 - 6.2) * t) * s;
+            // Scale both the sun core and rays together so rays always remain crisp visible lines
+            // (~2.8-3.0px long even at 0%) while the full sun expands from ~13.5px (0%) to edge-to-edge 16px (100%).
+            double ringRadius = (1.8 + (3.1 - 1.8) * t) * s;
+            double rayInner = (3.8 + (5.0 - 3.8) * t) * s;
+            double rayOuter = (6.6 + (8.0 - 6.6) * t) * s;
 
             dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
 
