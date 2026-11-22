@@ -197,13 +197,18 @@ public sealed class TrayContextMenu
         var startupItem = new MenuItem
         {
             Header = "Start with Windows",
+            Icon = CreateGlyphIcon("\uE945"),
+            Tag = "switch",
             IsCheckable = true,
-            IsChecked = _startupService.IsEnabled
+            IsChecked = _startupService.IsEnabled,
+            StaysOpenOnClick = true
         };
         startupItem.Click += (_, _) =>
         {
-            bool target = !_startupService.IsEnabled;
-            _startupService.SetEnabled(target);
+            if (!_startupService.SetEnabled(startupItem.IsChecked))
+            {
+                startupItem.IsChecked = _startupService.IsEnabled;
+            }
         };
         menu.Items.Add(startupItem);
 
@@ -211,13 +216,16 @@ public sealed class TrayContextMenu
         var linkItem = new MenuItem
         {
             Header = "Link All Monitors",
+            Icon = CreateGlyphIcon("\uE71B"),
+            Tag = "switch",
             IsCheckable = true,
             IsChecked = _controller.Settings.LinkMonitors,
-            IsEnabled = _controller.Monitors.Count > 1
+            IsEnabled = _controller.Monitors.Count > 1,
+            StaysOpenOnClick = true
         };
         linkItem.Click += (_, _) =>
         {
-            _controller.SetLinkMonitors(!_controller.Settings.LinkMonitors);
+            _controller.SetLinkMonitors(linkItem.IsChecked);
             _onLinkChanged();
         };
         menu.Items.Add(linkItem);
