@@ -9,13 +9,13 @@
   Cross-Origin-Resource-Policy: same-origin
 
 /styles.css
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=0, must-revalidate
 
 /app.js
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=0, must-revalidate
 
 /anim-init.js
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=0, must-revalidate
 
 /hero-bg.gif
   Cache-Control: public, max-age=604800, immutable
