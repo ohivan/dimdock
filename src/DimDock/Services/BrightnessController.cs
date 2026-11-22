@@ -11,6 +11,7 @@ public sealed class BrightnessController : IDisposable
     private readonly Action<Action> _uiInvoke;
     private readonly Dictionary<string, MonitorWriter> _writers = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private volatile MonitorInfo[] _monitorsSnapshot = [];
     private int _disposed;
 
     private bool IsDisposed => Volatile.Read(ref _disposed) != 0;
@@ -58,14 +59,22 @@ public sealed class BrightnessController : IDisposable
             {
                 if (IsDisposed) return;
 
-                Monitors.Clear();
+                var snapshot = discovered as MonitorInfo[] ?? [.. discovered];
                 lock (_writers)
                 {
-                    foreach (var monitor in discovered)
+                    if (IsDisposed) return;
+                    foreach (var monitor in snapshot)
                     {
-                        Monitors.Add(monitor);
                         _writers[monitor.Id] = new MonitorWriter(monitor.Id, _backend, _writeThrottle);
                     }
+                }
+
+                _monitorsSnapshot = snapshot;
+
+                Monitors.Clear();
+                foreach (var monitor in snapshot)
+                {
+                    Monitors.Add(monitor);
                 }
 
                 MonitorsRefreshed?.Invoke(this, EventArgs.Empty);
@@ -87,20 +96,21 @@ public sealed class BrightnessController : IDisposable
 
     public void SetMonitorBrightness(string monitorId, int brightnessPercent)
     {
-        if (IsDisposed || Monitors.Count == 0) return;
+        var monitors = _monitorsSnapshot;
+        if (IsDisposed || monitors.Length == 0) return;
 
         int clamped = Math.Clamp(brightnessPercent, 0, 100);
 
         if (Settings.LinkMonitors)
         {
-            foreach (var monitor in Monitors)
+            foreach (var monitor in monitors)
             {
                 ApplyMonitorBrightness(monitor, clamped);
             }
         }
         else
         {
-            var target = Monitors.FirstOrDefault(m => string.Equals(m.Id, monitorId, StringComparison.OrdinalIgnoreCase));
+            var target = monitors.FirstOrDefault(m => string.Equals(m.Id, monitorId, StringComparison.OrdinalIgnoreCase));
             if (target is null) return;
             ApplyMonitorBrightness(target, clamped);
         }
@@ -110,9 +120,10 @@ public sealed class BrightnessController : IDisposable
 
     public void StepMonitorBrightness(string monitorId, int deltaNotches)
     {
-        if (IsDisposed || Monitors.Count == 0 || deltaNotches == 0) return;
+        var monitors = _monitorsSnapshot;
+        if (IsDisposed || monitors.Length == 0 || deltaNotches == 0) return;
 
-        var target = Monitors.FirstOrDefault(m => string.Equals(m.Id, monitorId, StringComparison.OrdinalIgnoreCase));
+        var target = monitors.FirstOrDefault(m => string.Equals(m.Id, monitorId, StringComparison.OrdinalIgnoreCase));
         if (target is null) return;
 
         int next = Math.Clamp(target.Brightness + (deltaNotches * Settings.ScrollStep), 0, 100);
@@ -121,7 +132,7 @@ public sealed class BrightnessController : IDisposable
 
     public int? StepTrayBrightness(int deltaNotches)
     {
-        if (IsDisposed || Monitors.Count == 0 || deltaNotches == 0)
+        if (IsDisposed || _monitorsSnapshot.Length == 0 || deltaNotches == 0)
         {
             return GetTraySummaryPercent();
         }
@@ -212,11 +223,12 @@ public sealed class BrightnessController : IDisposable
 
     private IReadOnlyList<MonitorInfo> ResolveTrayTargets()
     {
-        if (Monitors.Count == 0) return [];
+        var monitors = _monitorsSnapshot;
+        if (monitors.Length == 0) return [];
 
         if (!string.Equals(Settings.TrayScrollTarget, AppSettings.AllMonitorsTarget, StringComparison.OrdinalIgnoreCase))
         {
-            var specific = Monitors.FirstOrDefault(m =>
+            var specific = monitors.FirstOrDefault(m =>
                 string.Equals(m.Id, Settings.TrayScrollTarget, StringComparison.OrdinalIgnoreCase));
             if (specific is not null)
             {
@@ -224,7 +236,7 @@ public sealed class BrightnessController : IDisposable
             }
         }
 
-        return Monitors;
+        return monitors;
     }
 
     private void ApplyMonitorBrightness(MonitorInfo monitor, int clampedPercent)

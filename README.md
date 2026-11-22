@@ -30,7 +30,7 @@ Download the latest `DimDock-win-Setup.exe` from [GitHub Releases](https://githu
 
 ## Development
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/) (and Node.js for the website).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/) (and [Bun](https://bun.sh/) for the website).
 
 ```powershell
 # Build & test the Windows app
@@ -42,7 +42,7 @@ dotnet run --project src/DimDock
 
 # Preview the website
 cd web
-npm run dev
+bun run dev
 ```
 
 ### Repository Structure

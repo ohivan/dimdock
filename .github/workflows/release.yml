@@ -45,6 +45,7 @@ jobs:
         run: dotnet test DimDock.slnx -c Release
 
       - name: Publish Self-Contained (win-x64)
+        shell: pwsh
         run: |
           dotnet publish src/DimDock/DimDock.csproj `
             -c Release `
@@ -68,7 +69,7 @@ jobs:
       - name: Pack Velopack Setup & Delta Packages
         shell: pwsh
         run: |
-          $args = @(
+          $packArgs = @(
             'pack',
             '-u', 'DimDock',
             '-v', '${{ steps.version.outputs.VERSION }}',
@@ -79,9 +80,9 @@ jobs:
             '--outputDir', 'Releases'
           )
           if (Test-Path 'src/DimDock/Assets/DimDock.ico') {
-            $args += @('--icon', 'src/DimDock/Assets/DimDock.ico')
+            $packArgs += @('--icon', 'src/DimDock/Assets/DimDock.ico')
           }
-          & vpk @args
+          & vpk @packArgs
 
       - name: Upload to GitHub Releases
         shell: pwsh
@@ -95,11 +96,14 @@ jobs:
             --publish
 
       - name: Submit WinGet Manifest Update (when WINGET_PAT is configured)
-        if: ${{ secrets.WINGET_PAT != '' }}
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+            Write-Host "WINGET_PAT secret is not configured; skipping WinGet manifest submission."
+            exit 0
+          }
           winget install Microsoft.WinGet.Create --accept-package-agreements --accept-source-agreements --disable-interactivity
           wingetcreate update `
             --id ohivan.DimDock `

@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node dev-server.mjs",
-    "dev:cf": "npx wrangler dev",
-    "deploy": "npx wrangler deploy"
+    "dev": "bun public/index.html",
+    "dev:cf": "bunx wrangler dev",
+    "deploy": "bunx wrangler deploy"
   }
 }

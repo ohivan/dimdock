@@ -6,10 +6,10 @@ Static WinUI 3-styled landing page for [DimDock](https://github.com/ohivan/dimdo
 
 ```bash
 cd web
-npm run dev
+bun run dev
 ```
 
-Opens at `http://127.0.0.1:4321`.
+Uses Bun's built-in HTML dev server with live reload (`http://localhost:3000`). To test with Cloudflare's [`wrangler.jsonc`](./wrangler.jsonc) and [`_headers`](./public/_headers), run `bun run dev:cf`.
 
 ## Deploying to Cloudflare
 
@@ -17,8 +17,8 @@ Opens at `http://127.0.0.1:4321`.
 
 Uses [`wrangler.jsonc`](./wrangler.jsonc) (`assets.directory = "./public"`):
 
-- **CLI**: `cd web && npm run deploy`
-- **Git integration**: Set **Root directory** to `web` and **Deploy command** to `npx wrangler deploy`.
+- **CLI**: `cd web && bun run deploy`
+- **Git integration**: Set **Root directory** to `web` and **Deploy command** to `bunx wrangler deploy` (or `npx wrangler deploy`).
 
 ### Cloudflare Pages
 

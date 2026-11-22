@@ -9,9 +9,11 @@ internal static class NativeMethods
     public const int WM_APP = 0x8000;
     public const int WM_SETTINGCHANGE = 0x001A;
     public const int WM_CONTEXTMENU = 0x007B;
+    public const int WM_DISPLAYCHANGE = 0x007E;
     public const int WM_KEYDOWN = 0x0100;
     public const int WM_KEYUP = 0x0101;
     public const int WM_MOUSEWHEEL = 0x020A;
+    public const int WM_DPICHANGED = 0x02E0;
     public const int VK_ESCAPE = 0x1B;
     public const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
     public const int NIN_SELECT = 0x0400;
@@ -50,7 +52,9 @@ internal static class NativeMethods
 
     // Monitor / DisplayConfig
     public const uint MONITORINFOF_PRIMARY = 0x00000001;
+    public const uint MONITOR_DEFAULTTOPRIMARY = 0x00000001;
     public const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+    public const int MDT_EFFECTIVE_DPI = 0;
     public const uint QDC_ONLY_ACTIVE_PATHS = 0x00000002;
     public const uint DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME = 1;
     public const uint DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME = 2;
@@ -118,6 +122,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
     [DllImport("user32.dll")]
     public static extern int GetDisplayConfigBufferSizes(uint flags, out uint numPathArrayElements, out uint numModeInfoArrayElements);
@@ -212,7 +219,16 @@ internal static class NativeMethods
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
+    public static extern uint GetDpiForSystem();
+
+    [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
+
+    [DllImport("shcore.dll")]
+    public static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr CreateIconIndirect(ref ICONINFO piconinfo);
@@ -226,7 +242,7 @@ internal static class NativeMethods
     public static extern IntPtr CreateDIBSection(IntPtr hdc, ref BITMAPINFO pbmi, uint usage, out IntPtr ppvBits, IntPtr hSection, uint offset);
 
     [DllImport("gdi32.dll", SetLastError = true)]
-    public static extern IntPtr CreateBitmap(int nWidth, int nHeight, uint nPlanes, uint nBitCount, IntPtr lpBits);
+    public static extern IntPtr CreateBitmap(int nWidth, int nHeight, uint nPlanes, uint nBitCount, byte[]? lpBits);
 
     [DllImport("gdi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

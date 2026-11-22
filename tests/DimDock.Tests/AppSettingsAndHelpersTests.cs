@@ -49,6 +49,53 @@ public sealed class AppSettingsAndHelpersTests : IDisposable
     }
 
     [Theory]
+    [InlineData(96u, 16, 16)]
+    [InlineData(120u, 20, 20)]
+    [InlineData(144u, 24, 24)]
+    [InlineData(192u, 32, 32)]
+    [InlineData(216u, 36, 36)]
+    [InlineData(288u, 48, 48)]
+    [InlineData(480u, 80, 80)]
+    [InlineData(216u, 0, 36)]
+    [InlineData(0u, 0, 16)]
+    [InlineData(960u, 200, 128)]
+    public void TrayIconComputeTargetIconSize_UsesDpiMetricWithFallbackAndClamp(uint dpi, int metricSize, int expected)
+    {
+        Assert.Equal(expected, TrayIconService.ComputeTargetIconSize(dpi, metricSize));
+    }
+
+    [Theory]
+    [InlineData(16)]
+    [InlineData(24)]
+    [InlineData(36)]
+    [InlineData(48)]
+    public void TrayIconRenderSunIconPixels_ProducesStraightAlphaBgra32AtTargetScale(int size)
+    {
+        byte[] darkPixels = TrayIconService.RenderSunIconPixels(isDarkTaskbar: true, brightnessPercent: 100, size);
+        Assert.Equal(size * size * 4, darkPixels.Length);
+
+        int nonZeroAlphaCount = 0;
+        int fullOpacityCount = 0;
+        for (int i = 0; i < darkPixels.Length; i += 4)
+        {
+            byte b = darkPixels[i];
+            byte g = darkPixels[i + 1];
+            byte r = darkPixels[i + 2];
+            byte a = darkPixels[i + 3];
+            if (a > 0)
+            {
+                nonZeroAlphaCount++;
+                // Straight BGRA32 keeps un-premultiplied white RGB near 255 even on partial-alpha edges.
+                Assert.True(r >= 250 && g >= 250 && b >= 250, $"Expected straight white RGB at pixel {i / 4}, got ({r},{g},{b},A={a})");
+                if (a == 255) fullOpacityCount++;
+            }
+        }
+
+        Assert.True(nonZeroAlphaCount > 0);
+        Assert.True(fullOpacityCount > 0);
+    }
+
+    [Theory]
     [InlineData("Shell_TrayWnd", true)]
     [InlineData("shell_secondarytraywnd", true)]
     [InlineData("NotifyIconOverflowWindow", true)]

@@ -1,30 +1,30 @@
 :root {
-  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-wordmark: "Syne", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-sans: "Google Sans Flex", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Google Sans Flex", "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-wordmark: "Google Sans Flex", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-win11: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, SFMono-Regular, monospace;
 
-  /* Deep indigo-slate base matching the coastal cave rock shadows */
-  --bg-base: #10121c;
-  --bg-topbar: rgba(14, 15, 24, 0.72);
+  /* Deep twilight river-navy base matching the animated pixel-art river skyline */
+  --bg-base: #0b1622;
 
   /* WinUI 3 Fluent glass cards over noisy gradient */
-  --bg-card: rgba(25, 28, 42, 0.56);
-  --bg-card-hover: rgba(33, 37, 54, 0.68);
+  --bg-card: rgba(19, 34, 50, 0.56);
+  --bg-card-hover: rgba(25, 44, 64, 0.68);
   --bg-control: rgba(255, 255, 255, 0.068);
   --bg-control-hover: rgba(255, 255, 255, 0.105);
   --bg-control-active: rgba(255, 255, 255, 0.042);
-  --bg-code: rgba(10, 12, 20, 0.54);
+  --bg-code: rgba(7, 15, 24, 0.56);
 
-  --stroke-card: rgba(255, 255, 255, 0.085);
-  --stroke-card-top: rgba(255, 255, 255, 0.13);
+  --stroke-card: rgba(255, 255, 255, 0.088);
+  --stroke-card-top: rgba(255, 255, 255, 0.135);
   --stroke-control: rgba(255, 255, 255, 0.10);
   --stroke-control-bevel: rgba(255, 255, 255, 0.16);
   --stroke-divider: rgba(255, 255, 255, 0.085);
 
-  --text-primary: #f3f5f8;
-  --text-secondary: rgba(232, 237, 248, 0.76);
-  --text-muted: rgba(208, 217, 236, 0.54);
+  --text-primary: #f3f7fb;
+  --text-secondary: rgba(226, 238, 249, 0.78);
+  --text-muted: rgba(198, 217, 235, 0.56);
 
   /* WinUI 3 Windows 11 Dark Accent */
   --accent: #4cc2ff;
@@ -32,7 +32,7 @@
   --accent-pressed: #37a8e6;
   --accent-fg: #0a0a0a;
   --accent-soft: rgba(76, 194, 255, 0.14);
-  --warm-tint: #9ab3d6;
+  --warm-tint: #f4df9e;
   --success: #6ccb5f;
 
   /* Exact DimDock WinUI 3 Flyout & Menu Surfaces (Dark default) */
@@ -112,17 +112,18 @@ body {
   overflow-x: hidden;
 }
 
-/* Cool misty coastal slate & twilight indigo gradient echoing the hero art */
+/* Deep river-teal & skyline steel-blue gradient echoing pixel_art_river.gif */
 .site-gradient {
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(64% 46% at 52% 28%, rgba(138, 160, 192, 0.13), transparent 72%),
-    radial-gradient(50% 44% at 84% 62%, rgba(76, 194, 255, 0.075), transparent 72%),
-    radial-gradient(56% 50% at 14% 72%, rgba(78, 60, 108, 0.16), transparent 74%),
-    linear-gradient(180deg, #10121c 0%, #141724 38%, #161826 72%, #0f111a 100%);
+    radial-gradient(64% 46% at 52% 24%, rgba(139, 180, 207, 0.14), transparent 72%),
+    radial-gradient(50% 44% at 84% 62%, rgba(76, 194, 255, 0.09), transparent 72%),
+    radial-gradient(54% 48% at 16% 74%, rgba(28, 72, 102, 0.22), transparent 74%),
+    radial-gradient(36% 28% at 48% 88%, rgba(244, 223, 158, 0.04), transparent 70%),
+    linear-gradient(180deg, #0b1622 0%, #0e1d2c 38%, #101f2f 72%, #0a141f 100%);
 }
 
 /* Noisy grain texture (Frame 1_1.png) layered smoothly across the entire site background */
@@ -131,7 +132,7 @@ body {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background-image: url("/grain.png");
+  background-image: url("./grain.png");
   background-repeat: repeat;
   background-size: 256px 256px;
   opacity: 0.065;
@@ -145,98 +146,28 @@ body {
   padding: 0 24px;
 }
 
-/* Minimal dark topbar matching plutonium.wtf */
-.topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: var(--bg-topbar);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
-}
-
-.topbar-inner {
-  height: 58px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-}
-
-.brand {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: #ffffff;
-  text-decoration: none;
-}
-
 .brand-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  opacity: 0.95;
+  color: var(--text-primary);
+}
+
+.footer-brand-icon svg {
+  width: 17px;
+  height: 16px;
+  display: block;
 }
 
 .brand-wordmark {
   font-family: var(--font-wordmark);
-  font-weight: 800;
-  font-size: 15.5px;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.015em;
   line-height: 1;
 }
 
-.nav-center {
-  justify-self: center;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.nav-link {
-  color: rgba(255, 255, 255, 0.68);
-  text-decoration: none;
-  font-size: 13.5px;
-  font-weight: 450;
-  padding: 6px 12px;
-  border-radius: 999px;
-  transition: color 120ms ease, background-color 120ms ease;
-}
-
-.nav-link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.nav-actions {
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.nav-icon-link {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.72);
-  transition: color 120ms ease, background-color 120ms ease;
-}
-
-.nav-icon-link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* Pill Buttons (Hero & Topbar) */
+/* Pill Buttons (Hero) */
 .pill-btn {
   display: inline-flex;
   align-items: center;
@@ -253,12 +184,6 @@ body {
   border: 1px solid transparent;
   transition: background-color 130ms ease, border-color 130ms ease, transform 130ms ease, color 130ms ease;
   user-select: none;
-}
-
-.pill-sm {
-  height: 33px;
-  padding: 0 16px;
-  font-size: 13px;
 }
 
 .pill-white {
@@ -298,7 +223,7 @@ body {
 .hero {
   position: relative;
   min-height: 92vh;
-  padding: 130px 0 130px;
+  padding: 96px 0 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -331,23 +256,23 @@ body {
 .hero-bg-image {
   position: absolute;
   inset: 0;
-  background-image: url("/hero-bg.jpg");
+  background-image: url("./hero-bg.gif");
   background-size: cover;
   background-position: center center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   transform: scale(1.01);
-  filter: brightness(0.74) contrast(1.04);
+  filter: brightness(0.95) contrast(1.02);
   transition: filter 140ms linear;
 }
 
-/* Soft atmospheric vignette so the white wordmark pops cleanly over the misty sky */
+/* Light atmospheric glaze: subtle left readability gradient while keeping the animated skyline vibrant */
 .hero-scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(14, 15, 24, 0.54) 0%, rgba(16, 18, 28, 0.18) 28%, rgba(16, 18, 28, 0.24) 72%, rgba(16, 18, 28, 0.68) 100%),
-    radial-gradient(52% 40% at 50% 47%, rgba(16, 18, 28, 0.44) 0%, rgba(16, 18, 28, 0.12) 66%, transparent 100%);
+    linear-gradient(180deg, rgba(10, 21, 33, 0.28) 0%, rgba(11, 22, 34, 0.06) 28%, rgba(11, 22, 34, 0.08) 72%, rgba(11, 22, 34, 0.56) 100%),
+    linear-gradient(90deg, rgba(9, 20, 32, 0.42) 0%, rgba(9, 20, 32, 0.2) 48%, rgba(9, 20, 32, 0.03) 100%);
 }
 
 /* Extra soft twilight feather near the bottom edge */
@@ -356,49 +281,102 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 36%;
+  height: 32%;
   background: linear-gradient(
     to bottom,
-    rgba(16, 18, 28, 0) 0%,
-    rgba(16, 18, 28, 0.58) 100%
+    rgba(11, 22, 34, 0) 0%,
+    rgba(11, 22, 34, 0.52) 100%
   );
 }
 
-.hero-content {
+.hero-grid {
   position: relative;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
   align-items: center;
-  text-align: center;
+  gap: 48px;
 }
 
-.hero-wordmark {
-  margin: 0 0 14px;
-  font-family: var(--font-wordmark);
-  font-weight: 800;
-  font-size: clamp(56px, 11vw, 118px);
-  line-height: 0.95;
-  letter-spacing: -0.045em;
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* Exact spacing & proportions from logo_with_text.svg (icon 1.59em, gap 0.36em, line-height 0.953) */
+.hero-lockup {
+  margin: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  font-size: clamp(38px, 5vw, 54px);
+  gap: 0.36em;
   color: #ffffff;
-  text-shadow: 0 10px 38px rgba(7, 10, 18, 0.55);
+  filter: drop-shadow(0 12px 34px rgba(7, 14, 22, 0.55));
+}
+
+.hero-logo-mark {
+  width: 1.59em;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.hero-logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  font-family: var(--font-wordmark);
+  font-weight: 700;
+  font-size: 1em;
+  line-height: 0.953;
+  letter-spacing: -0.015em;
 }
 
 .hero-subtitle {
-  margin: 0 0 28px;
-  max-width: 480px;
-  font-size: clamp(15px, 1.8vw, 17px);
-  color: rgba(244, 246, 250, 0.88);
+  margin: 0 0 10px;
+  max-width: 470px;
+  font-size: clamp(17px, 2vw, 20px);
+  font-weight: 500;
+  line-height: 1.38;
+  color: #ffffff;
   text-shadow: 0 2px 14px rgba(7, 10, 18, 0.65);
+}
+
+.hero-desc {
+  margin: 0 0 26px;
+  max-width: 460px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(235, 240, 250, 0.8);
+  text-shadow: 0 2px 12px rgba(7, 10, 18, 0.65);
 }
 
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+}
+
+.hero-screenshot-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hero-screenshot {
+  width: 100%;
+  max-width: 430px;
+  height: auto;
+  display: block;
+  filter:
+    drop-shadow(0 28px 54px rgba(0, 0, 0, 0.56))
+    drop-shadow(0 6px 16px rgba(0, 0, 0, 0.34));
+  user-select: none;
 }
 
 /* Compact frosted WinGet pill right under the hero buttons */
@@ -558,7 +536,7 @@ body {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.11);
-  background: #0d131d;
+  background: #0b1622;
   box-shadow: 0 28px 64px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -568,7 +546,7 @@ body {
 .desktop-wallpaper {
   position: absolute;
   inset: 0;
-  background-image: url("/hero-bg.jpg");
+  background-image: url("./hero-bg.gif");
   background-size: cover;
   background-position: center;
   image-rendering: pixelated;
@@ -647,6 +625,7 @@ body {
 .dim-flyout {
   width: 100%;
   max-width: 356px;
+  font-family: var(--font-win11);
   border-radius: var(--radius-flyout);
   overflow: hidden;
   border: 1px solid var(--flyout-border);
@@ -676,7 +655,7 @@ body {
 .acrylic-noise {
   position: absolute;
   inset: 0;
-  background-image: url("/noise.png");
+  background-image: url("./noise.png");
   background-repeat: repeat;
   background-size: 256px 256px;
   opacity: 0.025;
@@ -865,7 +844,7 @@ body {
   border-radius: 4px;
   background: transparent;
   color: var(--flyout-text);
-  font-family: var(--font-sans);
+  font-family: var(--font-win11);
   font-size: 13px;
   display: grid;
   grid-template-columns: 22px 1fr auto;
@@ -1259,6 +1238,203 @@ body {
   color: var(--text-primary);
 }
 
+/* Memory Benchmark Section */
+.benchmark-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.benchmark-bars-card,
+.benchmark-summary-card {
+  padding: 22px;
+}
+
+.benchmark-summary-card h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.benchmark-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-swatch.is-dimdock {
+  background: var(--accent);
+}
+
+.legend-swatch.is-twinkle {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.metric-group + .metric-group {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--stroke-divider);
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.metric-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.metric-sub {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.delta-pill {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 72px;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-row + .bar-row {
+  margin-top: 8px;
+}
+
+.bar-name {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.bar-fill.is-dimdock {
+  background: linear-gradient(90deg, var(--accent-pressed), var(--accent));
+}
+
+.bar-fill.is-twinkle {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.bar-val {
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar-val.is-dimdock {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.benchmark-note {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--stroke-divider);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.benchmark-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.process-compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--bg-code);
+  border: 1px solid var(--stroke-control);
+}
+
+.process-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.process-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.process-num.is-dimdock {
+  color: var(--accent);
+}
+
+.process-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.process-vs {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* Footer */
 .footer {
   position: relative;
@@ -1314,10 +1490,16 @@ body {
 
 /* Responsive */
 @media (max-width: 920px) {
+  .hero-grid,
   .preview-grid,
+  .benchmark-grid,
   .install-grid {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+
+  .hero-screenshot-wrap {
+    justify-content: flex-start;
   }
 
   .features-grid {
@@ -1334,17 +1516,9 @@ body {
     padding: 0 16px;
   }
 
-  .topbar-inner {
-    grid-template-columns: auto 1fr;
-  }
-
-  .nav-center {
-    display: none;
-  }
-
   .hero {
     min-height: 82vh;
-    padding: 112px 0 96px;
+    padding: 76px 0 88px;
   }
 
   .features-grid {
@@ -1357,6 +1531,11 @@ body {
 
   .tray-quick-icons {
     display: none;
+  }
+
+  .bar-row {
+    grid-template-columns: 82px 1fr 66px;
+    gap: 8px;
   }
 }
 

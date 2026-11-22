@@ -9,7 +9,10 @@
 /app.js
   Cache-Control: public, max-age=3600
 
-/hero-bg.jpg
+/hero-bg.gif
+  Cache-Control: public, max-age=604800, immutable
+
+/app-screen.png
   Cache-Control: public, max-age=604800, immutable
 
 /grain.png

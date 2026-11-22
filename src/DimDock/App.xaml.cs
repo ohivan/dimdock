@@ -80,6 +80,7 @@ public partial class App : Application
         _rescanDebounceTimer.Tick += async (_, _) =>
         {
             _rescanDebounceTimer.Stop();
+            _trayIconService?.RefreshScale();
             await SafeRefreshMonitorsAsync();
         };
 
@@ -154,6 +155,7 @@ public partial class App : Application
     {
         Dispatcher.BeginInvoke(() =>
         {
+            _trayIconService?.RefreshScale();
             _rescanDebounceTimer?.Stop();
             _rescanDebounceTimer?.Start();
         });

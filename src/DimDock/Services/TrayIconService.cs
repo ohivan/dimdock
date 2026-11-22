@@ -28,7 +28,6 @@ public sealed class TrayIconService : IDisposable
     {
         _isDarkTaskbar = isDarkTaskbar;
         _activateInstanceMessage = activateInstanceMessage;
-        _currentIconSize = GetTargetIconSize();
         _taskbarCreatedMessage = NativeMethods.RegisterWindowMessageW("TaskbarCreated");
 
         var parameters = new HwndSourceParameters("DimDock_TrayHost")
@@ -44,6 +43,7 @@ public sealed class TrayIconService : IDisposable
         _messageWindow = new HwndSource(parameters);
         _messageWindow.AddHook(WndProc);
 
+        _currentIconSize = GetTargetIconSize();
         _currentIcon = GetOrCreateIcon(_currentBucket);
         AddOrUpdateIcon(isAdd: true);
     }
@@ -97,9 +97,19 @@ public sealed class TrayIconService : IDisposable
     public void UpdateTheme(bool isDarkTaskbar)
     {
         if (_disposed) return;
+        RebuildIconsIfNeeded(isDarkTaskbar, pushToShell: true);
+    }
 
-        int nextIconSize = GetTargetIconSize();
-        if (_isDarkTaskbar == isDarkTaskbar && _currentIconSize == nextIconSize) return;
+    public void RefreshScale(uint? hintDpi = null)
+    {
+        if (_disposed) return;
+        RebuildIconsIfNeeded(_isDarkTaskbar, pushToShell: true, hintDpi);
+    }
+
+    private bool RebuildIconsIfNeeded(bool isDarkTaskbar, bool pushToShell, uint? hintDpi = null)
+    {
+        int nextIconSize = GetTargetIconSize(hintDpi);
+        if (_isDarkTaskbar == isDarkTaskbar && _currentIconSize == nextIconSize) return false;
 
         _isDarkTaskbar = isDarkTaskbar;
         _currentIconSize = nextIconSize;
@@ -110,7 +120,7 @@ public sealed class TrayIconService : IDisposable
 
         _currentIcon = GetOrCreateIcon(_currentBucket);
 
-        if (_iconAdded)
+        if (pushToShell && _iconAdded)
         {
             var nid = CreateBaseData();
             nid.uFlags = NativeMethods.NIF_ICON | NativeMethods.NIF_SHOWTIP;
@@ -125,6 +135,8 @@ public sealed class TrayIconService : IDisposable
                 NativeMethods.DestroyIcon(oldIcon);
             }
         }
+
+        return true;
     }
 
     internal bool TryGetIconRect(out RECT rect)
@@ -146,8 +158,95 @@ public sealed class TrayIconService : IDisposable
     internal static int QuantizeBucket(int percent) =>
         Math.Clamp((int)Math.Round(percent / 5.0, MidpointRounding.AwayFromZero) * 5, 0, 100);
 
-    private static int GetTargetIconSize() =>
-        Math.Clamp(NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSMICON), 16, 64);
+    internal static int ComputeTargetIconSize(uint dpi, int metricSizeForDpi)
+    {
+        int resolved = metricSizeForDpi > 0
+            ? metricSizeForDpi
+            : (int)Math.Round(16.0 * (dpi > 0 ? dpi : 96u) / 96.0, MidpointRounding.AwayFromZero);
+        return Math.Clamp(resolved, 16, 128);
+    }
+
+    private int GetTargetIconSize(uint? hintDpi = null)
+    {
+        uint dpi = GetTaskbarDpi(hintDpi);
+        int metricSize = NativeMethods.GetSystemMetricsForDpi(NativeMethods.SM_CXSMICON, dpi);
+        return ComputeTargetIconSize(dpi, metricSize);
+    }
+
+    private uint GetTaskbarDpi(uint? hintDpi = null)
+    {
+        // 1. Prefer the live effective DPI of the monitor actually hosting our tray icon.
+        if (_iconAdded && TryGetIconRect(out RECT iconRect))
+        {
+            var center = new POINT
+            {
+                X = (iconRect.Left + iconRect.Right) / 2,
+                Y = (iconRect.Top + iconRect.Bottom) / 2
+            };
+            IntPtr hMonitor = NativeMethods.MonitorFromPoint(center, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (TryGetMonitorDpi(hMonitor, out uint iconMonitorDpi))
+            {
+                return iconMonitorDpi;
+            }
+        }
+
+        // 2. Otherwise query the primary taskbar's monitor or window DPI directly.
+        IntPtr taskbarHwnd = NativeMethods.FindWindowW("Shell_TrayWnd", null);
+        if (taskbarHwnd != IntPtr.Zero)
+        {
+            IntPtr taskbarMonitor = NativeMethods.MonitorFromWindow(taskbarHwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (TryGetMonitorDpi(taskbarMonitor, out uint taskbarMonitorDpi))
+            {
+                return taskbarMonitorDpi;
+            }
+
+            uint taskbarWindowDpi = NativeMethods.GetDpiForWindow(taskbarHwnd);
+            if (taskbarWindowDpi > 0)
+            {
+                return taskbarWindowDpi;
+            }
+        }
+
+        // 3. Fall back to the primary monitor's live effective DPI.
+        IntPtr primaryMonitor = NativeMethods.MonitorFromPoint(default, NativeMethods.MONITOR_DEFAULTTOPRIMARY);
+        if (TryGetMonitorDpi(primaryMonitor, out uint primaryDpi))
+        {
+            return primaryDpi;
+        }
+
+        // 4. Use WM_DPICHANGED hint, message window DPI, or system DPI as final fallbacks.
+        if (hintDpi is > 0)
+        {
+            return hintDpi.Value;
+        }
+
+        if (_messageWindow.Handle != IntPtr.Zero)
+        {
+            uint windowDpi = NativeMethods.GetDpiForWindow(_messageWindow.Handle);
+            if (windowDpi > 0)
+            {
+                return windowDpi;
+            }
+        }
+
+        uint systemDpi = NativeMethods.GetDpiForSystem();
+        return systemDpi > 0 ? systemDpi : 96;
+    }
+
+    private static bool TryGetMonitorDpi(IntPtr hMonitor, out uint dpi)
+    {
+        dpi = 0;
+        if (hMonitor == IntPtr.Zero) return false;
+
+        if (NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out _) == 0 &&
+            dpiX > 0)
+        {
+            dpi = dpiX;
+            return true;
+        }
+
+        return false;
+    }
 
     private IntPtr GetOrCreateIcon(int bucket)
     {
@@ -212,12 +311,22 @@ public sealed class TrayIconService : IDisposable
         else if (msg == _taskbarCreatedMessage && _taskbarCreatedMessage != 0)
         {
             _iconAdded = false;
+            RebuildIconsIfNeeded(_isDarkTaskbar, pushToShell: false);
             AddOrUpdateIcon(isAdd: true);
         }
         else if (msg == _activateInstanceMessage && _activateInstanceMessage != 0)
         {
             ExternalActivateRequested?.Invoke(this, EventArgs.Empty);
             handled = true;
+        }
+        else if (msg == NativeMethods.WM_DPICHANGED)
+        {
+            uint dpi = (uint)(wParam.ToInt64() & 0xFFFF);
+            RefreshScale(dpi > 0 ? dpi : null);
+        }
+        else if (msg == NativeMethods.WM_DISPLAYCHANGE)
+        {
+            RefreshScale();
         }
         else if (msg == NativeMethods.WM_SETTINGCHANGE || msg == NativeMethods.WM_DWMCOLORIZATIONCOLORCHANGED)
         {
@@ -229,8 +338,15 @@ public sealed class TrayIconService : IDisposable
 
     private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent, int size)
     {
-        // Render directly at the OS small-icon pixel size (16px @ 100%, 20px @ 125%, 24px @ 150%, 32px @ 200%)
-        // so Windows doesn't soften the glyph with downscale filtering.
+        byte[] pixels = RenderSunIconPixels(isDarkTaskbar, brightnessPercent, size);
+        return CreateHIconFromBgra32(pixels, size, size);
+    }
+
+    internal static byte[] RenderSunIconPixels(bool isDarkTaskbar, int brightnessPercent, int size)
+    {
+        // Render directly at the live taskbar small-icon pixel size (16px @ 100%, 20px @ 125%,
+        // 24px @ 150%, 32px @ 200%, 36px @ 225%, 48px @ 300%, ...) so Windows renders it 1:1
+        // without upscaling blur or downscaling softness.
         double s = size / 16.0;
         double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
 
@@ -238,7 +354,10 @@ public sealed class TrayIconService : IDisposable
             ? Color.FromRgb(0xFF, 0xFF, 0xFF)
             : Color.FromRgb(0x1A, 0x1A, 0x1A);
 
-        var pen = new Pen(new SolidColorBrush(fg), 1.45 * s)
+        var brush = new SolidColorBrush(fg);
+        brush.Freeze();
+
+        var pen = new Pen(brush, 1.45 * s)
         {
             StartLineCap = PenLineCap.Flat,
             EndLineCap = PenLineCap.Flat
@@ -272,11 +391,14 @@ public sealed class TrayIconService : IDisposable
         var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(visual);
 
+        // Windows 11's taskbar extracts 32bpp HICONs via WIC as straight (non-premultiplied) BGRA32.
+        // Converting from Pbgra32 avoids double-premultiplication dimming on anti-aliased edges.
+        var straightBgra = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
+
         int stride = size * 4;
         byte[] pixels = new byte[stride * size];
-        rtb.CopyPixels(pixels, stride, 0);
-
-        return CreateHIconFromBgra32(pixels, size, size);
+        straightBgra.CopyPixels(pixels, stride, 0);
+        return pixels;
     }
 
     private static IntPtr CreateHIconFromBgra32(byte[] bgraPixels, int width, int height)
@@ -308,7 +430,9 @@ public sealed class TrayIconService : IDisposable
         }
 
         Marshal.Copy(bgraPixels, 0, bitsPtr, bgraPixels.Length);
-        IntPtr hMaskBitmap = NativeMethods.CreateBitmap(width, height, 1, 1, IntPtr.Zero);
+        int maskStride = ((width + 15) / 16) * 2;
+        byte[] maskBits = new byte[maskStride * height];
+        IntPtr hMaskBitmap = NativeMethods.CreateBitmap(width, height, 1, 1, maskBits);
 
         try
         {
