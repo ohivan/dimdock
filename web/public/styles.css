@@ -57,8 +57,8 @@
   --taskbar-border: rgba(255, 255, 255, 0.09);
   --stage-brightness: 0.92;
 
-  --radius-control: 4px;
-  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-card: 12px;
   --radius-flyout: 10px;
 }
 
@@ -119,11 +119,10 @@ body {
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(64% 46% at 52% 24%, rgba(139, 180, 207, 0.14), transparent 72%),
-    radial-gradient(50% 44% at 84% 62%, rgba(76, 194, 255, 0.09), transparent 72%),
-    radial-gradient(54% 48% at 16% 74%, rgba(28, 72, 102, 0.22), transparent 74%),
-    radial-gradient(36% 28% at 48% 88%, rgba(244, 223, 158, 0.04), transparent 70%),
-    linear-gradient(180deg, #0b1622 0%, #0e1d2c 38%, #101f2f 72%, #0a141f 100%);
+    radial-gradient(50% 44% at 84% 68%, rgba(76, 194, 255, 0.09), transparent 72%),
+    radial-gradient(54% 48% at 16% 78%, rgba(28, 72, 102, 0.22), transparent 74%),
+    radial-gradient(36% 28% at 48% 92%, rgba(244, 223, 158, 0.04), transparent 70%),
+    linear-gradient(180deg, #0b1622 0%, #0b1622 36%, #0f1e2e 72%, #0a141f 100%);
 }
 
 /* Noisy grain texture (Frame 1_1.png) layered smoothly across the entire site background */
@@ -154,7 +153,7 @@ body {
 }
 
 .footer-brand-icon svg {
-  width: 17px;
+  width: 16px;
   height: 16px;
   display: block;
 }
@@ -167,7 +166,7 @@ body {
   line-height: 1;
 }
 
-/* Pill Buttons (Hero) */
+/* WinUI 3 Rounded Hero Buttons */
 .pill-btn {
   display: inline-flex;
   align-items: center;
@@ -175,7 +174,7 @@ body {
   gap: 8px;
   height: 40px;
   padding: 0 20px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   font-family: var(--font-sans);
   font-size: 13.5px;
   font-weight: 500;
@@ -235,22 +234,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 52%,
-    rgba(0, 0, 0, 0.72) 72%,
-    rgba(0, 0, 0, 0.25) 88%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 52%,
-    rgba(0, 0, 0, 0.72) 72%,
-    rgba(0, 0, 0, 0.25) 88%,
-    transparent 100%
-  );
+  overflow: hidden;
 }
 
 .hero-bg-image {
@@ -261,32 +245,31 @@ body {
   background-position: center center;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  transform: scale(1.01);
   filter: brightness(0.95) contrast(1.02);
   transition: filter 140ms linear;
 }
 
-/* Light atmospheric glaze: subtle left readability gradient while keeping the animated skyline vibrant */
+/* Live 1:1 art-pixel transition layers locked to hero-bg.gif's 500x288 grid */
+.hero-water-tint,
+.hero-water-blend {
+  position: absolute;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Multiply layer darkens the live GIF frames directly so real water ripples animate right through the fade */
+.hero-water-tint {
+  mix-blend-mode: multiply;
+}
+
+/* Light atmospheric glaze: subtle left readability gradient while keeping the river reflections bright down to the pixel fade */
 .hero-scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(10, 21, 33, 0.28) 0%, rgba(11, 22, 34, 0.06) 28%, rgba(11, 22, 34, 0.08) 72%, rgba(11, 22, 34, 0.56) 100%),
-    linear-gradient(90deg, rgba(9, 20, 32, 0.42) 0%, rgba(9, 20, 32, 0.2) 48%, rgba(9, 20, 32, 0.03) 100%);
-}
-
-/* Extra soft twilight feather near the bottom edge */
-.hero-fade {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 32%;
-  background: linear-gradient(
-    to bottom,
-    rgba(11, 22, 34, 0) 0%,
-    rgba(11, 22, 34, 0.52) 100%
-  );
+    linear-gradient(180deg, rgba(10, 21, 33, 0.28) 0%, rgba(11, 22, 34, 0.05) 30%, rgba(11, 22, 34, 0.06) 80%, rgba(11, 22, 34, 0.16) 100%),
+    linear-gradient(90deg, rgba(9, 20, 32, 0.42) 0%, rgba(9, 20, 32, 0.18) 48%, rgba(9, 20, 32, 0.02) 100%);
 }
 
 .hero-grid {
@@ -305,33 +288,15 @@ body {
   text-align: left;
 }
 
-/* Exact spacing & proportions from logo_with_text.svg (icon 1.59em, gap 0.36em, line-height 0.953) */
-.hero-lockup {
-  margin: 0 0 18px;
-  display: inline-flex;
-  align-items: center;
-  font-size: clamp(38px, 5vw, 54px);
-  gap: 0.36em;
-  color: #ffffff;
-  filter: drop-shadow(0 12px 34px rgba(7, 14, 22, 0.55));
-}
-
-.hero-logo-mark {
-  width: 1.59em;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.hero-logo-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
+.hero-title {
+  margin: 0 0 14px;
   font-family: var(--font-wordmark);
-  font-weight: 700;
-  font-size: 1em;
-  line-height: 0.953;
-  letter-spacing: -0.015em;
+  font-weight: 500;
+  font-size: clamp(46px, 6.2vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  text-shadow: 0 10px 34px rgba(7, 14, 22, 0.5);
 }
 
 .hero-subtitle {
@@ -353,45 +318,168 @@ body {
   text-shadow: 0 2px 12px rgba(7, 10, 18, 0.65);
 }
 
+.hero-cta-group {
+  display: inline-flex;
+  flex-direction: column;
+  width: fit-content;
+  max-width: 100%;
+  gap: 12px;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  margin-bottom: 16px;
 }
 
 .hero-screenshot-wrap {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  perspective: 1200px;
 }
 
-.hero-screenshot {
+/* Live WinUI 3 Dark Acrylic 3-monitor hero panel:
+   Replicates Windows 11 Control Center Acrylic (DWMSBT_TRANSIENTWINDOW):
+   contrast(<1) lifts dark floors and compresses highlights like WinUI's Luminosity blend,
+   keeping dark areas lifted to native #262b30 charcoal instead of crushing to black */
+.dim-flyout.hero-flyout {
+  --hero-rx: 2.2deg;
+  --hero-ry: -7.5deg;
+  --hero-sheen-x: 32%;
+  --hero-sheen-y: 22%;
+  --hero-shadow-x: 16px;
+  --hero-shadow-y: 28px;
+  position: relative;
   width: 100%;
-  max-width: 430px;
-  height: auto;
-  display: block;
-  filter:
-    drop-shadow(0 28px 54px rgba(0, 0, 0, 0.56))
-    drop-shadow(0 6px 16px rgba(0, 0, 0, 0.34));
-  user-select: none;
+  max-width: 448px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.095);
+  background: transparent;
+  backdrop-filter: blur(22px) saturate(0.68) contrast(0.88) brightness(0.76);
+  -webkit-backdrop-filter: blur(22px) saturate(0.68) contrast(0.88) brightness(0.76);
+  box-shadow:
+    var(--hero-shadow-x) var(--hero-shadow-y) 56px rgba(0, 0, 0, 0.48),
+    4px 8px 20px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: rotateX(var(--hero-rx)) rotateY(var(--hero-ry));
+  transform-origin: center center;
+  will-change: transform;
+  animation: none;
 }
 
-/* Compact frosted WinGet pill right under the hero buttons */
+.hero-flyout-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    520px circle at var(--hero-sheen-x) var(--hero-sheen-y),
+    rgba(255, 255, 255, 0.022),
+    rgba(255, 255, 255, 0.005) 45%,
+    transparent 72%
+  );
+}
+
+.dim-flyout.hero-flyout .dim-flyout-body {
+  background: rgba(44, 44, 44, 0.26);
+  padding: 22px 24px 10px;
+}
+
+.dim-flyout.hero-flyout .acrylic-noise {
+  opacity: 0.024;
+}
+
+.dim-flyout.hero-flyout .dim-flyout-divider {
+  background: rgba(16, 16, 16, 0.38);
+  box-shadow: none;
+}
+
+.dim-flyout.hero-flyout .dim-flyout-footer {
+  height: 54px;
+  padding: 0 16px 0 24px;
+  background: rgba(28, 28, 28, 0.38);
+}
+
+.dim-flyout.hero-flyout .dim-flyout-footer-label {
+  font-size: 14px;
+}
+
+.dim-flyout.hero-flyout .link-toggle {
+  width: 34px;
+  height: 32px;
+}
+
+.dim-flyout.hero-flyout .monitor-row {
+  margin-bottom: 16px;
+}
+
+.dim-flyout.hero-flyout .monitor-row:last-child {
+  margin-bottom: 12px;
+}
+
+.dim-flyout.hero-flyout .monitor-header {
+  gap: 11px;
+  margin-bottom: 6px;
+}
+
+.dim-flyout.hero-flyout .monitor-glyph {
+  width: 21px;
+  height: 21px;
+}
+
+.dim-flyout.hero-flyout .monitor-name {
+  font-size: 16px;
+}
+
+.dim-flyout.hero-flyout .slider-row {
+  grid-template-columns: 1fr 48px;
+  gap: 8px;
+}
+
+.dim-flyout.hero-flyout .fluent-slider {
+  height: 36px;
+}
+
+.dim-flyout.hero-flyout .fluent-slider-track {
+  height: 4.5px;
+}
+
+.dim-flyout.hero-flyout .fluent-slider-thumb {
+  width: 22px;
+  height: 22px;
+}
+
+.dim-flyout.hero-flyout .fluent-slider-dot {
+  width: 12px;
+  height: 12px;
+}
+
+.dim-flyout.hero-flyout .monitor-value {
+  font-size: 22px;
+}
+
+/* Frosted WinGet bar matched to the exact width of the hero buttons */
 .hero-winget {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   max-width: 100%;
   padding: 5px 5px 5px 14px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(13, 19, 29, 0.64);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.hero-winget .winget-code {
+  flex: 1;
+  min-width: 0;
 }
 
 .winget-prompt {
@@ -420,7 +508,7 @@ body {
   gap: 5px;
   height: 28px;
   padding: 0 11px;
-  border-radius: 999px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.09);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
@@ -464,16 +552,6 @@ body {
   padding-top: 24px;
 }
 
-.section-kicker {
-  display: inline-block;
-  margin-bottom: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .section-head {
   margin-bottom: 24px;
 }
@@ -496,129 +574,51 @@ body {
   color: var(--text-secondary);
 }
 
-/* Preview Split Grid */
-.preview-grid {
+/* Real App Screenshots Grid */
+.screenshots-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-  align-items: center;
-  gap: 44px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  align-items: stretch;
 }
 
-.preview-hints {
-  list-style: none;
-  margin: 22px 0 0;
-  padding: 0;
+.screenshot-card {
+  margin: 0;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.preview-hints li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+.screenshot-card-head h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.screenshot-card-head p {
+  margin: 0;
   font-size: 13.5px;
+  line-height: 1.55;
   color: var(--text-secondary);
 }
 
-.hint-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  margin-top: 7px;
-  flex-shrink: 0;
-}
-
-/* Interactive Windows 11 Desktop Stage */
-.desktop-stage {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  background: #0b1622;
-  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  min-height: 416px;
-}
-
-.desktop-wallpaper {
-  position: absolute;
-  inset: 0;
-  background-image: url("./hero-bg.gif");
-  background-size: cover;
-  background-position: center;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  filter: brightness(var(--stage-brightness));
-  transition: filter 110ms linear;
-  pointer-events: none;
-}
-
-.stage-toolbar {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px 0;
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 6px;
-  background: rgba(15, 19, 28, 0.64);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(14px);
-}
-
-.segmented-btn {
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.78);
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 110ms ease, color 110ms ease;
-}
-
-.segmented-btn.is-active {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-}
-
-.stage-theme-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(15, 19, 28, 0.64);
-  color: rgba(255, 255, 255, 0.88);
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  transition: background-color 110ms ease;
-}
-
-.stage-theme-btn:hover {
-  background: rgba(25, 31, 44, 0.8);
-}
-
-.stage-canvas {
-  position: relative;
-  z-index: 2;
-  flex: 1;
+.screenshot-frame {
   display: flex;
   align-items: flex-end;
-  justify-content: flex-end;
-  padding: 20px 18px 14px;
-  min-height: 318px;
+  justify-content: center;
+  flex: 1;
+}
+
+.screenshot-frame img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.28);
 }
 
 /* Authentic DimDock WinUI 3 Acrylic Flyout */
@@ -1027,54 +1027,86 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* WinUI 3 Fluent Glass Cards */
-.fluent-card {
+/* Hairline-Divided Cards with Animated Bayer-Dithered Pixel Canvas */
+[data-pixel-surface] {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius-card);
-  background: var(--bg-card);
-  border: 1px solid var(--stroke-card);
-  box-shadow: inset 0 1px 0 var(--stroke-card-top), 0 12px 32px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(8, 17, 27, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+}
+
+.pixel-dither-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.fluent-card {
+  position: relative;
+  z-index: 1;
+  border-radius: 0;
+  background: rgba(8, 17, 27, 0.36);
+  border: 0;
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.085);
 }
 
 .features-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 0;
 }
 
 .feature-card {
-  padding: 20px;
-  transition: background-color 130ms ease, border-color 130ms ease;
+  padding: 24px 22px;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
 }
 
 .feature-card:hover {
-  background: var(--bg-card-hover);
-  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(16, 40, 62, 0.34);
+  box-shadow: inset 0 0 0 0.5px rgba(76, 194, 255, 0.28);
+}
+
+.feature-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .feature-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
-  background: var(--accent-soft);
   color: var(--accent);
 }
 
+.feature-index {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  opacity: 0.78;
+  font-variant-numeric: tabular-nums;
+}
+
 .feature-card h3 {
-  margin: 0 0 6px;
-  font-size: 15px;
+  margin: 0 0 8px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .feature-card p {
   margin: 0;
   font-size: 13.5px;
-  line-height: 1.55;
+  line-height: 1.58;
   color: var(--text-secondary);
 }
 
@@ -1082,12 +1114,12 @@ body {
 .install-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 12px;
+  gap: 0;
 }
 
 .install-card,
 .req-card {
-  padding: 22px;
+  padding: 24px;
 }
 
 .install-card-head {
@@ -1113,7 +1145,7 @@ body {
   font-size: 11.5px;
   font-weight: 500;
   padding: 2px 9px;
-  border-radius: 999px;
+  border-radius: 5px;
   background: var(--bg-control);
   border: 1px solid var(--stroke-control);
   color: var(--text-secondary);
@@ -1137,7 +1169,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 6px 6px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-code);
   border: 1px solid var(--stroke-control);
 }
@@ -1148,7 +1180,7 @@ body {
 }
 
 .winget-command-row .copy-btn {
-  border-radius: var(--radius-control);
+  border-radius: 5px;
 }
 
 .install-actions {
@@ -1242,13 +1274,13 @@ body {
 .benchmark-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: 12px;
+  gap: 0;
   align-items: stretch;
 }
 
 .benchmark-bars-card,
 .benchmark-summary-card {
-  padding: 22px;
+  padding: 24px;
 }
 
 .benchmark-summary-card h3 {
@@ -1257,53 +1289,29 @@ body {
   font-weight: 600;
 }
 
-.benchmark-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-}
-
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-
-.legend-swatch.is-dimdock {
-  background: var(--accent);
-}
-
-.legend-swatch.is-twinkle {
-  background: rgba(255, 255, 255, 0.26);
+.metric-group {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(7, 15, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .metric-group + .metric-group {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--stroke-divider);
+  margin-top: 12px;
 }
 
 .metric-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
 }
 
 .metric-title {
-  font-size: 13.5px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -1312,22 +1320,15 @@ body {
   color: var(--text-muted);
 }
 
-.delta-pill {
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .bar-row {
   display: grid;
-  grid-template-columns: 92px 1fr 72px;
+  grid-template-columns: 104px minmax(0, 1fr) 74px 38px;
   align-items: center;
   gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
 }
 
 .bar-row + .bar-row {
@@ -1335,43 +1336,53 @@ body {
 }
 
 .bar-name {
-  font-size: 12.5px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
+.bar-name.is-dimdock {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .bar-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  height: 12px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.065);
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: 4px;
 }
 
 .bar-fill.is-dimdock {
-  background: linear-gradient(90deg, var(--accent-pressed), var(--accent));
+  background-color: var(--accent);
 }
 
 .bar-fill.is-twinkle {
-  background: rgba(255, 255, 255, 0.24);
+  background-color: rgba(164, 201, 228, 0.30);
 }
 
 .bar-val {
   text-align: right;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .bar-val.is-dimdock {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.bar-mult {
+  text-align: right;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .benchmark-note {
@@ -1396,7 +1407,7 @@ body {
   gap: 10px;
   margin-bottom: 18px;
   padding: 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-code);
   border: 1px solid var(--stroke-control);
 }
@@ -1436,15 +1447,20 @@ body {
 }
 
 /* Footer */
-.footer {
+.footer,
+.footer[data-pixel-surface] {
   position: relative;
   z-index: 2;
-  margin-top: 24px;
+  margin-top: 32px;
+  border: 0;
   border-top: 1px solid var(--stroke-divider);
-  padding: 24px 0 34px;
+  border-radius: 0;
+  padding: 28px 0 36px;
 }
 
 .footer-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1466,20 +1482,27 @@ body {
   font-size: 14px;
 }
 
-.footer-links {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.footer-links a {
+.footer-meta a {
   color: var(--text-secondary);
   text-decoration: none;
+  transition: color 140ms ease;
 }
 
-.footer-links a:hover {
+.footer-meta a:hover {
   color: var(--text-primary);
-  text-decoration: underline;
+}
+
+.footer-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.footer-github:hover {
+  color: var(--text-primary);
 }
 
 /* Focus rings */
@@ -1491,7 +1514,7 @@ body {
 /* Responsive */
 @media (max-width: 920px) {
   .hero-grid,
-  .preview-grid,
+  .screenshots-grid,
   .benchmark-grid,
   .install-grid {
     grid-template-columns: 1fr;
@@ -1500,6 +1523,14 @@ body {
 
   .hero-screenshot-wrap {
     justify-content: flex-start;
+  }
+
+  .dim-flyout.hero-flyout {
+    --hero-rx: 0deg;
+    --hero-ry: 0deg;
+    --hero-shadow-x: 0px;
+    --hero-shadow-y: 22px;
+    max-width: 100%;
   }
 
   .features-grid {
@@ -1534,8 +1565,13 @@ body {
   }
 
   .bar-row {
-    grid-template-columns: 82px 1fr 66px;
+    grid-template-columns: 96px minmax(0, 1fr) 66px 34px;
     gap: 8px;
+    font-size: 12px;
+  }
+
+  .bar-track {
+    padding-right: 4px;
   }
 }
 

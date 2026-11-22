@@ -1,65 +1,49 @@
 # DimDock
 
-Lightweight Windows 11 system tray utility for controlling external monitor brightness over hardware DDC/CI, designed to match Quick Settings.
+Windows 11 system tray utility for controlling external monitor brightness over hardware DDC/CI.
 
-## Features
+<p align="left">
+  <img src="web/public/screenshot-flyout.png" alt="Brightness flyout" height="230" />
+  <img src="web/public/screenshot-menu.png" alt="Tray context menu" height="230" />
+</p>
 
-- **Hardware DDC/CI control** — Adjusts your monitor's actual backlight rather than applying a software tint.
-- **Native Windows 11 UI** — Acrylic flyout and tray menu matching your system theme and accent color.
-- **Tray icon scrolling** — Hover the tray icon and scroll to change brightness in 1%, 2%, 5%, or 10% steps.
-- **Multi-monitor support** — Control monitors independently or link them together, with configurable tray scroll targets.
-- **Dynamic tray icon** — DPI-aware sun glyph that scales with current brightness.
+## Overview
+
+- **Hardware DDC/CI** — Controls the monitor's actual backlight rather than applying a software overlay, with throttled writes and automatic wake/display rescanning.
+- **Taskbar controls** — Left-click the tray icon for the Fluent Acrylic flyout, right-click for settings, or scroll directly over the icon in 1%, 2%, 5%, or 10% steps.
+- **Multi-monitor** — Adjust monitors independently or link them together, with configurable tray scroll targets.
+- **Native Windows 11** — Matches system theme and accent color, uses a DPI-aware sun icon that reflects brightness, and runs as a single .NET 10 WPF process (~73 MB active RAM idle, zero telemetry).
 - **Startup & updates** — Optional *Start with Windows* toggle and automatic updates via Velopack.
-
-## Requirements
-
-- Windows 11 (x64)
-- External monitor(s) with **DDC/CI** enabled in the monitor's OSD settings
 
 ## Install
 
-**WinGet**
+Requires Windows 11 (x64) and external monitor(s) with **DDC/CI** enabled in the monitor's OSD menu.
 
 ```powershell
 winget install ohivan.DimDock
 ```
 
-**Manual**
-
-Download the latest `DimDock-win-Setup.exe` from [GitHub Releases](https://github.com/ohivan/dimdock/releases/latest).
+Or download `DimDock-win-Setup.exe` from [GitHub Releases](https://github.com/ohivan/dimdock/releases/latest).
 
 ## Development
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/) (and [Bun](https://bun.sh/) for the website).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/) (and [Bun](https://bun.sh/) for [`web/`](./web)).
 
 ```powershell
-# Build & test the Windows app
 dotnet build DimDock.slnx
 dotnet test DimDock.slnx
-
-# Run locally
 dotnet run --project src/DimDock
-
-# Preview the website
-cd web
-bun run dev
 ```
 
-### Repository Structure
-
-- [`src/DimDock`](./src/DimDock) — Windows 11 .NET 10 WPF tray application
-  - `Interop/` — Win32 P/Invoke declarations and struct layouts (`dxva2`, `dwmapi`, `user32`, `shell32`, `gdi32`)
-  - `Services/` — DDC/CI monitor backend, coalescing brightness controller, tray icon/scroll hook, settings, theme, logging, and Velopack updater
-  - `UI/` — Acrylic Quick Settings flyout, native-Hz `DwmFlush` slide animator, shared taskbar placement helper, and Fluent tray context menu
-- [`tests/DimDock.Tests`](./tests/DimDock.Tests) — xUnit unit tests (controller coalescing/concurrency, Win32 struct layouts, placement geometry, easing curves, settings, and updater state machine)
-- [`web`](./web) — Project website (see [`web/README.md`](./web/README.md))
+- [`src/DimDock`](./src/DimDock) — WPF tray app (`Interop/` Win32 P/Invoke, `Services/` DDC/CI backend & settings/updater, `UI/` Acrylic flyout & Fluent tray menu)
+- [`tests/DimDock.Tests`](./tests/DimDock.Tests) — xUnit tests for controller concurrency, Win32 interop, placement, easing, settings, and updater
+- [`web`](./web) — Static project website (`cd web && bun run dev`; see [`web/README.md`](./web/README.md))
 
 ## Troubleshooting
 
-- **Monitor not detected**: Open your monitor's on-screen display (OSD) menu and verify **DDC/CI** is enabled. Some HDMI/DisplayPort docks or KVMs block I2C/DDC traffic.
-- **Settings & logs**:
-  - Settings: `%LocalAppData%\DimDock\settings.json`
-  - Diagnostic log: `%LocalAppData%\DimDock\dimdock.log`
+- **Monitor not detected**: Verify **DDC/CI** is enabled in the monitor's OSD settings. Some HDMI/DisplayPort docks or KVMs block I2C/DDC traffic.
+- **Settings**: `%LocalAppData%\DimDock\settings.json`
+- **Log**: `%LocalAppData%\DimDock\dimdock.log`
 
 ## License
 

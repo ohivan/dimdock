@@ -1,9 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="809.4 413.545 44 44" fill="none">
-  <rect x="809.4" y="413.545" width="44" height="44" rx="10" fill="#0b1622" />
-  <rect x="810.1" y="414.245" width="42.6" height="42.6" rx="9.3" stroke="rgba(255,255,255,0.14)" stroke-width="1.4" />
-  <g stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="820.636" y1="425.241" x2="823.389" y2="428.316" />
-    <line x1="842.165" y1="425.241" x2="839.411" y2="428.316" />
-    <path d="M840.788 445.848 C840.788 440.663 836.585 436.46 831.4 436.46 C826.216 436.46 822.013 440.663 822.013 445.848" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#0b1622" />
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="rgba(255,255,255,0.14)" />
+  <g transform="translate(6 6) scale(1.25)" stroke="#ffffff" stroke-width="1.45" stroke-linecap="butt">
+    <circle cx="8" cy="8" r="3" />
+    <line x1="8" y1="0" x2="8" y2="3" />
+    <line x1="8" y1="13" x2="8" y2="16" />
+    <line x1="0" y1="8" x2="3" y2="8" />
+    <line x1="13" y1="8" x2="16" y2="8" />
+    <line x1="2.34" y1="2.34" x2="4.46" y2="4.46" />
+    <line x1="11.54" y1="11.54" x2="13.66" y2="13.66" />
+    <line x1="13.66" y1="2.34" x2="11.54" y2="4.46" />
+    <line x1="4.46" y1="11.54" x2="2.34" y2="13.66" />
   </g>
 </svg>
