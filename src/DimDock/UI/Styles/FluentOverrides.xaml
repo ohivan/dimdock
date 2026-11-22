@@ -1,13 +1,57 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Unified single-column Fluent MenuItem style (fixes .NET 10 Fluent's jagged 2-column checkmark+icon indent) -->
+    <!-- Clean Windows 11 native taskbar ContextMenu container -->
+    <Style x:Key="DimDockContextMenuStyle" TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="ItemContainerStyle" Value="{DynamicResource DimDockMenuItemStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Margin="8"
+                            Padding="0,3"
+                            CornerRadius="8"
+                            MinWidth="196"
+                            Background="{DynamicResource DimMenuPopupBgBrush}"
+                            BorderBrush="{DynamicResource DimMenuPopupBorderBrush}"
+                            BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000"
+                                              Opacity="0.45"
+                                              BlurRadius="14"
+                                              ShadowDepth="3"
+                                              Direction="270" />
+                        </Border.Effect>
+                        <StackPanel IsItemsHost="True"
+                                    KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DimDockSeparatorStyle" TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Margin" Value="0,3" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1"
+                            Background="{DynamicResource DimMenuPopupBorderBrush}"
+                            SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Native taskbar-style MenuItem with zero blank left gutter -->
     <Style x:Key="DimDockMenuItemStyle" TargetType="MenuItem">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Foreground" Value="{DynamicResource DimTextPrimaryBrush}" />
         <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
         <Setter Property="FontSize" Value="13.5" />
-        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinHeight" Value="34" />
         <Setter Property="ItemContainerStyle" Value="{DynamicResource DimDockMenuItemStyle}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -25,7 +69,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Single shared icon / checkmark slot -->
+                                <!-- Icon slot for action / submenu items -->
                                 <ContentPresenter x:Name="IconHost"
                                                   Grid.Column="0"
                                                   ContentSource="Icon"
@@ -33,15 +77,16 @@
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,10,0" />
 
-                                <TextBlock x:Name="CheckGlyph"
+                                <!-- Checkbox glyph for checkable toggles (no blank left gap when unchecked) -->
+                                <TextBlock x:Name="ToggleGlyph"
                                            Grid.Column="0"
-                                           Text="&#xE73E;"
+                                           Text="&#xE739;"
                                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="12"
-                                           Foreground="{TemplateBinding Foreground}"
+                                           FontSize="14"
+                                           Foreground="{DynamicResource DimTextSecondaryBrush}"
                                            HorizontalAlignment="Left"
                                            VerticalAlignment="Center"
-                                           Margin="1,1,10,0"
+                                           Margin="0,1,10,0"
                                            Visibility="Collapsed" />
 
                                 <!-- Item label -->
@@ -67,13 +112,13 @@
                         <Popup x:Name="PART_Popup"
                                AllowsTransparency="True"
                                Placement="Right"
-                               HorizontalOffset="2"
-                               VerticalOffset="-5"
+                               HorizontalOffset="-4"
+                               VerticalOffset="-11"
                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
                                Focusable="False"
                                PopupAnimation="Fade">
-                            <Border Margin="6"
-                                    Padding="0,4"
+                            <Border Margin="8"
+                                    Padding="0,3"
                                     CornerRadius="8"
                                     MinWidth="148"
                                     Background="{DynamicResource DimMenuPopupBgBrush}"
@@ -93,10 +138,36 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
+                        <!-- Checkable items show a visible outline box when off and accent checkbox when on -->
+                        <Trigger Property="IsCheckable" Value="True">
+                            <Setter TargetName="ToggleGlyph" Property="Visibility" Value="Visible" />
                             <Setter TargetName="IconHost" Property="Visibility" Value="Collapsed" />
                         </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsCheckable" Value="True" />
+                                <Condition Property="IsChecked" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xE73D;" />
+                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimAccentBrush}" />
+                        </MultiTrigger>
+                        <!-- Radio-style submenu options (Tag="radio") -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Tag" Value="radio" />
+                                <Condition Property="IsChecked" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xECCA;" />
+                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimTextMutedBrush}" />
+                        </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Tag" Value="radio" />
+                                <Condition Property="IsChecked" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xECCB;" />
+                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimAccentBrush}" />
+                        </MultiTrigger>
                         <Trigger Property="Role" Value="SubmenuHeader">
                             <Setter TargetName="SubmenuChevron" Property="Visibility" Value="Visible" />
                         </Trigger>

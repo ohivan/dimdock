@@ -112,20 +112,28 @@ public sealed class TrayContextMenu
         }
 
         // Center horizontally on the tray icon and clamp 12px inside the screen edges (matching native tray menus).
-        double x = anchorPx.X - (popupSize.Width / 2.0);
-        double minX = mi.rcWork.Left + marginPx;
-        double maxX = Math.Max(minX, mi.rcWork.Right - popupSize.Width - marginPx);
-        x = Math.Clamp(x, minX, maxX);
+        // Account for the 8px drop-shadow margin around the custom ContextMenu Border.
+        double shadowMarginPx = 8.0 * scale;
+        double visualWidth = popupSize.Width - (shadowMarginPx * 2.0);
+        double visualHeight = popupSize.Height - (shadowMarginPx * 2.0);
 
-        double y = isTaskbarAtTop
+        double visualX = anchorPx.X - (visualWidth / 2.0);
+        double minX = mi.rcWork.Left + marginPx;
+        double maxX = Math.Max(minX, mi.rcWork.Right - visualWidth - marginPx);
+        visualX = Math.Clamp(visualX, minX, maxX);
+
+        double visualY = isTaskbarAtTop
             ? effectiveTopPx + marginPx
-            : effectiveBottomPx - popupSize.Height - marginPx;
+            : effectiveBottomPx - visualHeight - marginPx;
 
         // If the icon is inside the overflow dock and the menu would overlap the icon, anchor cleanly above it.
         if (hasTrayRect && hasTaskbarRect && !isTaskbarAtTop && trayRect.Bottom <= taskbarRect.Top)
         {
-            y = Math.Max(mi.rcWork.Top + marginPx, trayRect.Top - popupSize.Height - marginPx);
+            visualY = Math.Max(mi.rcWork.Top + marginPx, trayRect.Top - visualHeight - marginPx);
         }
+
+        double x = visualX - shadowMarginPx;
+        double y = visualY - shadowMarginPx;
 
         return [new CustomPopupPlacement(new Point(Math.Round(x), Math.Round(y)), PopupPrimaryAxis.Horizontal)];
     }
@@ -163,9 +171,23 @@ public sealed class TrayContextMenu
         HorizontalAlignment = HorizontalAlignment.Center
     };
 
+    private static Separator CreateSeparator()
+    {
+        var sep = new Separator();
+        if (Application.Current?.TryFindResource("DimDockSeparatorStyle") is Style sepStyle)
+        {
+            sep.Style = sepStyle;
+        }
+        return sep;
+    }
+
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu();
+        if (Application.Current?.TryFindResource("DimDockContextMenuStyle") is Style menuStyle)
+        {
+            menu.Style = menuStyle;
+        }
         if (Application.Current?.TryFindResource("DimDockMenuItemStyle") is Style menuItemStyle)
         {
             menu.ItemContainerStyle = menuItemStyle;
@@ -200,7 +222,7 @@ public sealed class TrayContextMenu
         };
         menu.Items.Add(linkItem);
 
-        menu.Items.Add(new Separator());
+        menu.Items.Add(CreateSeparator());
 
         // Tray Scroll Target submenu
         var targetMenu = new MenuItem
@@ -214,6 +236,7 @@ public sealed class TrayContextMenu
         {
             Header = "All Monitors",
             IsCheckable = true,
+            Tag = "radio",
             IsChecked = string.Equals(currentTarget, AppSettings.AllMonitorsTarget, StringComparison.OrdinalIgnoreCase)
         };
         allItem.Click += (_, _) => _controller.SetTrayScrollTarget(AppSettings.AllMonitorsTarget);
@@ -221,7 +244,7 @@ public sealed class TrayContextMenu
 
         if (_controller.Monitors.Count > 0)
         {
-            targetMenu.Items.Add(new Separator());
+            targetMenu.Items.Add(CreateSeparator());
             foreach (var monitor in _controller.Monitors)
             {
                 string id = monitor.Id;
@@ -229,6 +252,7 @@ public sealed class TrayContextMenu
                 {
                     Header = monitor.DisplayName,
                     IsCheckable = true,
+                    Tag = "radio",
                     IsChecked = string.Equals(currentTarget, id, StringComparison.OrdinalIgnoreCase)
                 };
                 monitorItem.Click += (_, _) => _controller.SetTrayScrollTarget(id);
@@ -250,6 +274,7 @@ public sealed class TrayContextMenu
             {
                 Header = $"{capturedStep}%",
                 IsCheckable = true,
+                Tag = "radio",
                 IsChecked = _controller.Settings.ScrollStep == capturedStep
             };
             stepItem.Click += (_, _) => _controller.SetScrollStep(capturedStep);
@@ -257,7 +282,7 @@ public sealed class TrayContextMenu
         }
         menu.Items.Add(stepMenu);
 
-        menu.Items.Add(new Separator());
+        menu.Items.Add(CreateSeparator());
 
         // Refresh Monitors
         var refreshItem = new MenuItem
