@@ -1,7 +1,7 @@
 const CONFIG = {
   repo: "ohivan/dimdock",
   wingetId: "ohivan.DimDock",
-  fallbackVersion: "v1.0.0",
+  fallbackVersion: "v1.0.2",
 };
 
 function clamp(value, min, max) {
@@ -947,10 +947,57 @@ function initScrollAnimations() {
   }
 }
 
+function initPixelBars() {
+  const bars = document.querySelectorAll("[data-pixel-bar]");
+  if (!bars.length) return;
+
+  const CELL = 7; // Exact 7px cell size matching initPixelDitherSurfaces
+  const GAP = 2;
+  const PITCH = CELL + GAP;
+
+  const renderBar = (bar) => {
+    const width = bar.clientWidth || 240;
+    const cells = Math.max(4, Math.floor((width + GAP) / PITCH));
+    const ratio = clamp(Number(bar.getAttribute("data-ratio") || 0), 0, 1);
+    const filled = ratio > 0 ? Math.max(1, Math.round(ratio * cells)) : 0;
+
+    if (bar.dataset.renderedCells === String(cells) && bar.dataset.renderedFilled === String(filled)) {
+      return;
+    }
+    bar.dataset.renderedCells = String(cells);
+    bar.dataset.renderedFilled = String(filled);
+
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < cells; i++) {
+      const cell = document.createElement("span");
+      cell.className = i < filled ? "pixel-bar-cell is-filled" : "pixel-bar-cell";
+      cell.setAttribute("aria-hidden", "true");
+      if (i < filled) {
+        cell.style.setProperty("--cell-idx", String(i));
+      }
+      frag.appendChild(cell);
+    }
+
+    bar.replaceChildren(frag);
+  };
+
+  bars.forEach(renderBar);
+
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        renderBar(entry.target);
+      }
+    });
+    bars.forEach((bar) => ro.observe(bar));
+  }
+}
+
 initHeroPixelFade();
 initHeroFlyoutPanel();
 initCopyButtons();
 initPixelDitherSurfaces();
+initPixelBars();
 initPageLoadAnimations();
 initScrollAnimations();
 hydrateLatestRelease();

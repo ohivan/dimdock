@@ -1,7 +1,12 @@
 /*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
 
 /styles.css
   Cache-Control: public, max-age=3600
@@ -9,10 +14,19 @@
 /app.js
   Cache-Control: public, max-age=3600
 
+/anim-init.js
+  Cache-Control: public, max-age=3600
+
 /hero-bg.gif
   Cache-Control: public, max-age=604800, immutable
 
 /app-screen.png
+  Cache-Control: public, max-age=604800, immutable
+
+/screenshot-flyout.png
+  Cache-Control: public, max-age=604800, immutable
+
+/screenshot-menu.png
   Cache-Control: public, max-age=604800, immutable
 
 /grain.png

@@ -400,7 +400,7 @@
               <span class="feature-index" aria-hidden="true">06</span>
             </div>
             <h3>Lightweight &amp; Resilient</h3>
-            <p>Built on .NET 10 WPF with throttled DDC writes, automatic wake/display rescanning, and zero telemetry.</p>
+            <p>Ships as a single NativeAOT Win32/Direct2D binary with throttled DDC writes, automatic display rescanning, and zero telemetry.</p>
           </article>
         </div>
       </div>
@@ -410,7 +410,7 @@
       <div class="container">
         <div class="section-head" data-reveal>
           <h2>Light on your PC, all day long.</h2>
-          <p>DimDock is built natively for Windows instead of wrapping a hidden web browser, so it uses far less memory than Twinkle Tray.</p>
+          <p>DimDock is built natively for Windows instead of wrapping a hidden web browser, so it uses a fraction of the memory and disk space of Twinkle Tray.</p>
         </div>
 
         <div class="benchmark-grid" data-pixel-surface data-reveal data-reveal-surface data-benchmark-animate>
@@ -421,19 +421,15 @@
               </div>
               <div class="bar-row is-dimdock">
                 <span class="bar-name is-dimdock">DimDock</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-dimdock" style="width: 54.7%; --bar-delay: 140ms"></div>
-                </div>
-                <span class="bar-val is-dimdock" data-count-to="73.4" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="140">73.4 MB</span>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0045" style="--bar-delay: 140ms" role="img" aria-label="DimDock active RAM: 0.6 MB"></div>
+                <span class="bar-val is-dimdock" data-count-to="0.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="140">0.6 MB</span>
                 <span class="bar-mult" aria-hidden="true"></span>
               </div>
               <div class="bar-row">
                 <span class="bar-name">Twinkle Tray</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-twinkle" style="width: 100%; --bar-delay: 240ms"></div>
-                </div>
-                <span class="bar-val" data-count-to="134.2" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="240">134.2 MB</span>
-                <span class="bar-mult" style="--mult-delay: 520ms">1.8x</span>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 200ms" role="img" aria-label="Twinkle Tray active RAM: 134.2 MB"></div>
+                <span class="bar-val" data-count-to="134.2" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="200">134.2 MB</span>
+                <span class="bar-mult" style="--mult-delay: 540ms">224x</span>
               </div>
             </div>
 
@@ -443,19 +439,15 @@
               </div>
               <div class="bar-row is-dimdock">
                 <span class="bar-name is-dimdock">DimDock</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-dimdock" style="width: 43%; --bar-delay: 240ms"></div>
-                </div>
-                <span class="bar-val is-dimdock" data-count-to="135.9" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="240">135.9 MB</span>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0465" style="--bar-delay: 220ms" role="img" aria-label="DimDock reserved RAM: 14.7 MB"></div>
+                <span class="bar-val is-dimdock" data-count-to="14.7" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="220">14.7 MB</span>
                 <span class="bar-mult" aria-hidden="true"></span>
               </div>
               <div class="bar-row">
                 <span class="bar-name">Twinkle Tray</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-twinkle" style="width: 100%; --bar-delay: 340ms"></div>
-                </div>
-                <span class="bar-val" data-count-to="316.1" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="340">316.1 MB</span>
-                <span class="bar-mult" style="--mult-delay: 620ms">2.3x</span>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 280ms" role="img" aria-label="Twinkle Tray reserved RAM: 316.1 MB"></div>
+                <span class="bar-val" data-count-to="316.1" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="280">316.1 MB</span>
+                <span class="bar-mult" style="--mult-delay: 620ms">21.5x</span>
               </div>
             </div>
 
@@ -465,59 +457,58 @@
               </div>
               <div class="bar-row is-dimdock">
                 <span class="bar-name is-dimdock">DimDock</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-dimdock" style="width: 37.3%; --bar-delay: 340ms"></div>
-                </div>
-                <span class="bar-val is-dimdock" data-count-to="180.8" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="340">180.8 MB</span>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0021" style="--bar-delay: 300ms" role="img" aria-label="DimDock total memory used: 1.0 MB"></div>
+                <span class="bar-val is-dimdock" data-count-to="1.0" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="300">1.0 MB</span>
                 <span class="bar-mult" aria-hidden="true"></span>
               </div>
               <div class="bar-row">
                 <span class="bar-name">Twinkle Tray</span>
-                <div class="bar-track">
-                  <div class="bar-fill is-twinkle" style="width: 100%; --bar-delay: 440ms"></div>
-                </div>
-                <span class="bar-val" data-count-to="484.8" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="440">484.8 MB</span>
-                <span class="bar-mult" style="--mult-delay: 720ms">2.7x</span>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 360ms" role="img" aria-label="Twinkle Tray total memory used: 484.8 MB"></div>
+                <span class="bar-val" data-count-to="484.8" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="360">484.8 MB</span>
+                <span class="bar-mult" style="--mult-delay: 700ms">485x</span>
               </div>
             </div>
 
             <p class="benchmark-note">
               Average of 5 measurements on Windows 11 while both apps sat idle in the system tray
-              (compared against Twinkle Tray v1.17.2).
+              (DimDock v1.0.2 vs. Twinkle Tray v1.17.2).
             </p>
           </div>
 
           <div class="fluent-card benchmark-summary-card" data-reveal-item style="--reveal-delay: 150ms">
-            <h3>Why It Uses Less RAM</h3>
+            <h3>Why It&rsquo;s So Light</h3>
 
-            <div class="process-compare">
-              <div class="process-tile">
-                <span class="process-num is-dimdock" data-count-to="1" data-count-decimals="0" data-count-delay="180">1</span>
-                <span class="process-label">DimDock background task</span>
+            <div class="metric-group install-size-group" style="--metric-delay: 140ms">
+              <div class="metric-header">
+                <span class="metric-title">Install Size <span class="metric-sub">(on disk)</span></span>
               </div>
-              <span class="process-vs" aria-hidden="true">vs</span>
-              <div class="process-tile">
-                <span class="process-num" data-count-to="5" data-count-decimals="0" data-count-delay="260">5</span>
-                <span class="process-label">Twinkle Tray tasks</span>
+              <div class="bar-stack is-dimdock">
+                <div class="bar-stack-meta">
+                  <span class="bar-name is-dimdock">DimDock</span>
+                  <span class="bar-val is-dimdock" data-count-to="7.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="180">7.6 MB</span>
+                </div>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0256" style="--bar-delay: 180ms" role="img" aria-label="DimDock installed size: 7.6 MB"></div>
+              </div>
+              <div class="bar-stack">
+                <div class="bar-stack-meta">
+                  <span class="bar-name">Twinkle Tray</span>
+                  <span class="bar-stack-nums">
+                    <span class="bar-val" data-count-to="297" data-count-decimals="0" data-count-suffix=" MB" data-count-delay="240">297 MB</span>
+                    <span class="bar-mult" style="--mult-delay: 600ms">39x</span>
+                  </span>
+                </div>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 240ms" role="img" aria-label="Twinkle Tray installed size: 297 MB"></div>
               </div>
             </div>
 
             <ul class="settings-list">
               <li>
-                <span class="settings-key">How DimDock is built</span>
-                <span class="settings-val">One lightweight native Windows app with no extra layers</span>
+                <span class="settings-key">Native vs. browser</span>
+                <span class="settings-val">Single native Win32 binary &mdash; no bundled Chromium engine</span>
               </li>
               <li>
-                <span class="settings-key">How Twinkle Tray is built</span>
-                <span class="settings-val">Runs a bundled web browser in the background across 5 tasks</span>
-              </li>
-              <li>
-                <span class="settings-key">Memory saved</span>
-                <span class="settings-val">60.8 MB less active RAM &amp; 180.2 MB less reserved memory</span>
-              </li>
-              <li>
-                <span class="settings-key">Install size</span>
-                <span class="settings-val">Small download — no ~300 MB browser engine bundled</span>
+                <span class="settings-key">Saved at idle &amp; on disk</span>
+                <span class="settings-val">133.6 MB less active RAM &middot; 13.1 MB installer (vs. 88.1 MB)</span>
               </li>
             </ul>
           </div>
@@ -536,7 +527,7 @@
           <div class="fluent-card install-card" data-reveal-item style="--reveal-delay: 50ms">
             <div class="install-card-head">
               <h3>Install &amp; Download</h3>
-              <span class="version-pill" data-version-badge>v1.0.0</span>
+              <span class="version-pill" data-version-badge>v1.0.2</span>
             </div>
 
             <div class="install-block">
@@ -604,20 +595,12 @@
                 <span class="settings-val">Windows 11 (x64)</span>
               </li>
               <li>
-                <span class="settings-key">Monitor Support</span>
-                <span class="settings-val">Desktop setups with external monitors (DDC/CI enabled in OSD)</span>
-              </li>
-              <li>
-                <span class="settings-key">Laptop Displays</span>
-                <span class="settings-val">Not supported &mdash; DimDock is only for external monitors; use Windows 11&rsquo;s built-in brightness slider for laptop screens</span>
-              </li>
-              <li>
-                <span class="settings-key">Startup</span>
-                <span class="settings-val">Optional &ldquo;Start with Windows&rdquo; toggle in tray menu</span>
+                <span class="settings-key">Monitors</span>
+                <span class="settings-val">External desktop monitors with DDC/CI enabled (not laptop screens)</span>
               </li>
               <li>
                 <span class="settings-key">Privacy &amp; License</span>
-                <span class="settings-val">Zero telemetry · Open source under MIT</span>
+                <span class="settings-val">Zero telemetry &middot; Open source under MIT</span>
               </li>
             </ul>
           </div>

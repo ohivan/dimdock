@@ -260,7 +260,7 @@ public sealed class TrayContextMenu : IDisposable
             }
         }
 
-        _subPopup.Show(x, y, scale, activate: false);
+        _subPopup.Show(x, y, scale, activate: false, ownerHwnd: _rootPopup.Hwnd);
     }
 
     private void HandleItemClick(MenuItemModel item)
@@ -878,7 +878,7 @@ public sealed class TrayContextMenu : IDisposable
             HeightDip = (float)Math.Ceiling(totalHeight);
         }
 
-        public void Show(int xPx, int yPx, double scale, bool activate, IntPtr insertAfterHwnd = default)
+        public void Show(int xPx, int yPx, double scale, bool activate, IntPtr insertAfterHwnd = default, IntPtr ownerHwnd = default)
         {
             if (_disposed) return;
 
@@ -921,7 +921,7 @@ public sealed class TrayContextMenu : IDisposable
                     "DimDockMenu",
                     NativeMethods.WS_POPUP | NativeMethods.WS_CLIPCHILDREN | NativeMethods.WS_CLIPSIBLINGS,
                     xPx, yPx, widthPx, heightPx,
-                    IntPtr.Zero, IntPtr.Zero, hInstance, IntPtr.Zero);
+                    ownerHwnd, IntPtr.Zero, hInstance, IntPtr.Zero);
             }
             finally
             {
@@ -962,6 +962,12 @@ public sealed class TrayContextMenu : IDisposable
             if (activate)
             {
                 NativeMethods.SetForegroundWindow(_hwnd);
+            }
+            else
+            {
+                // Keep DWM's DWMSBT_TRANSIENTWINDOW Acrylic in active state on non-activated submenus
+                // so they match the root menu's exact color and transparency.
+                NativeMethods.SendMessageW(_hwnd, NativeMethods.WM_NCACTIVATE, new IntPtr(1), IntPtr.Zero);
             }
 
             // Keep the menu directly behind the taskbar in topmost Z-order so its bottom shadow
@@ -1212,6 +1218,14 @@ public sealed class TrayContextMenu : IDisposable
                     if (wParam != IntPtr.Zero)
                     {
                         return IntPtr.Zero;
+                    }
+                    break;
+
+                case NativeMethods.WM_NCACTIVATE:
+                    // Keep submenus rendering active Acrylic while the root menu owns keyboard focus.
+                    if (_onHoverChanged is null)
+                    {
+                        return NativeMethods.DefWindowProcW(hwnd, msg, new IntPtr(1), lParam);
                     }
                     break;
 

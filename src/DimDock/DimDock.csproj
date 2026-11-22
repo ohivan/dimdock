@@ -12,7 +12,7 @@
     <RootNamespace>DimDock</RootNamespace>
     <Product>DimDock</Product>
     <Description>Lightweight Windows 11 system tray DDC/CI monitor brightness manager</Description>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>ohivan</Authors>
 
     <!-- NativeAOT & Footprint Optimization -->
