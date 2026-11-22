@@ -9,11 +9,11 @@ Windows 11 system tray utility for controlling external monitor brightness over 
 
 ## Overview
 
-- **Hardware DDC/CI** — Controls the monitor's actual backlight rather than applying a software overlay, with throttled writes and automatic wake/display rescanning.
-- **Taskbar controls** — Left-click the tray icon for the Fluent Acrylic flyout, right-click for settings, or scroll directly over the icon in 1%, 2%, 5%, or 10% steps.
-- **Multi-monitor** — Adjust monitors independently or link them together, with configurable tray scroll targets.
-- **Native Windows 11** — Matches system theme and accent color, uses a DPI-aware sun icon that reflects brightness, and runs as a single .NET 10 WPF process (~73 MB active RAM idle, zero telemetry).
-- **Startup & updates** — Optional *Start with Windows* toggle and automatic updates via Velopack.
+- **Hardware DDC/CI**: Controls the monitor's actual backlight rather than applying a software overlay, with throttled writes and automatic wake/display rescanning.
+- **Taskbar controls**: Left-click the tray icon for the Fluent Acrylic flyout, right-click for settings, or scroll directly over the icon in 1%, 2%, 5%, or 10% steps.
+- **Multi-monitor**: Adjust monitors independently or link them together, with configurable tray scroll targets.
+- **Native Windows 11**: Matches system theme and accent color, uses a DPI-aware sun icon that reflects brightness, and runs as a single .NET 10 WPF process (~73 MB active RAM idle, zero telemetry).
+- **Startup & updates**: Optional *Start with Windows* toggle and automatic updates via Velopack.
 
 ## Install
 
@@ -35,9 +35,9 @@ dotnet test DimDock.slnx
 dotnet run --project src/DimDock
 ```
 
-- [`src/DimDock`](./src/DimDock) — WPF tray app (`Interop/` Win32 P/Invoke, `Services/` DDC/CI backend & settings/updater, `UI/` Acrylic flyout & Fluent tray menu)
-- [`tests/DimDock.Tests`](./tests/DimDock.Tests) — xUnit tests for controller concurrency, Win32 interop, placement, easing, settings, and updater
-- [`web`](./web) — Static project website (`cd web && bun run dev`; see [`web/README.md`](./web/README.md))
+- [`src/DimDock`](./src/DimDock): WPF tray app (`Interop/` Win32 P/Invoke, `Services/` DDC/CI backend & settings/updater, `UI/` Acrylic flyout & Fluent tray menu)
+- [`tests/DimDock.Tests`](./tests/DimDock.Tests): xUnit tests for controller concurrency, Win32 interop, placement, easing, settings, and updater
+- [`web`](./web): Static project website (`cd web && bun run dev`; see [`web/README.md`](./web/README.md))
 
 ## Troubleshooting
 
