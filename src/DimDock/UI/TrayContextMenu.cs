@@ -166,6 +166,10 @@ public sealed class TrayContextMenu
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu();
+        if (Application.Current?.TryFindResource("DimDockMenuItemStyle") is Style menuItemStyle)
+        {
+            menu.ItemContainerStyle = menuItemStyle;
+        }
 
         // Start with Windows
         var startupItem = new MenuItem
