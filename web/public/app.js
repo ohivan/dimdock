@@ -1,6 +1,6 @@
 const CONFIG = {
   repo: "ohivan/dimdock",
-  wingetId: "ohivan.DimDock",
+  wingetId: "ohivan.dimdock",
   fallbackVersion: "v1.0.2",
 };
 
@@ -250,23 +250,26 @@ function initPixelDitherSurfaces() {
       }).observe(container);
     }
 
+    const observeSelector = container.getAttribute("data-pixel-observe");
+    const observedTarget = observeSelector ? document.querySelector(observeSelector) || container : container;
+
     if (typeof IntersectionObserver !== "undefined") {
       new IntersectionObserver(
         (entries) => {
           isVisible = entries[0]?.isIntersecting ?? true;
         },
         { threshold: 0.01 }
-      ).observe(container);
+      ).observe(observedTarget);
     }
 
-    container.addEventListener("pointermove", (event) => {
+    observedTarget.addEventListener("pointermove", (event) => {
       const rect = container.getBoundingClientRect();
       pointerX = (event.clientX - rect.left) / cellSize;
       pointerY = (event.clientY - rect.top) / cellSize;
       hovering = true;
     });
 
-    container.addEventListener("pointerleave", () => {
+    observedTarget.addEventListener("pointerleave", () => {
       hovering = false;
     });
 

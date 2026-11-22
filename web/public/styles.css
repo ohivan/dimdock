@@ -151,13 +151,26 @@ html.is-scrolled .scroll-progress {
 .site-grain {
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   pointer-events: none;
   background-image: url("./grain.png");
   background-repeat: repeat;
   background-size: 256px 256px;
   opacity: 0.085;
   mix-blend-mode: overlay;
+}
+
+/* Main content sits opaquely above the fixed footer backdrop so the footer surface
+   only shows from the footer border downward, extending seamlessly into mobile overscroll */
+main {
+  position: relative;
+  z-index: 2;
+  padding-bottom: 32px;
+  background:
+    radial-gradient(50% 44% at 84% 68%, rgba(76, 194, 255, 0.09), transparent 72%),
+    radial-gradient(54% 48% at 16% 78%, rgba(28, 72, 102, 0.22), transparent 74%),
+    radial-gradient(36% 28% at 48% 92%, rgba(244, 223, 158, 0.04), transparent 70%),
+    linear-gradient(180deg, #0b1622 0%, #0b1622 36%, #0f1e2e 72%, #0a141f 100%);
 }
 
 .container {
@@ -308,6 +321,7 @@ html.is-scrolled .scroll-progress {
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
+  min-width: 0;
 }
 
 .hero-title {
@@ -345,6 +359,7 @@ html.is-scrolled .scroll-progress {
   flex-direction: column;
   width: fit-content;
   max-width: 100%;
+  min-width: 0;
   gap: 12px;
 }
 
@@ -491,6 +506,8 @@ html.is-scrolled .scroll-progress {
   gap: 8px;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  min-height: 40px;
   padding: 5px 5px 5px 14px;
   border-radius: 8px;
   background: rgba(13, 19, 29, 0.64);
@@ -504,6 +521,7 @@ html.is-scrolled .scroll-progress {
 .hero-winget .winget-code {
   flex: 1;
   min-width: 0;
+  padding-right: 78px;
 }
 
 .hero-winget.is-copied,
@@ -555,8 +573,8 @@ html.is-scrolled .scroll-progress {
   }
 }
 
-.hero-winget > :not(.winget-sweep),
-.winget-command-row > :not(.winget-sweep) {
+.hero-winget > :not(.winget-sweep):not(.copy-btn),
+.winget-command-row > :not(.winget-sweep):not(.copy-btn) {
   position: relative;
   z-index: 1;
 }
@@ -605,7 +623,12 @@ html.is-scrolled .scroll-progress {
 }
 
 .copy-btn {
-  position: relative;
+  position: absolute;
+  right: 5px;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -613,8 +636,11 @@ html.is-scrolled .scroll-progress {
   height: 28px;
   padding: 0 11px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.09);
+  background-color: rgba(31, 39, 48, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    -10px 0 14px rgba(7, 15, 24, 0.78),
+    0 2px 8px rgba(0, 0, 0, 0.28);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 12px;
@@ -640,7 +666,7 @@ html.is-scrolled .scroll-progress {
 }
 
 .copy-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background-color: rgba(46, 54, 62, 0.97);
   border-color: rgba(255, 255, 255, 0.22);
 }
 
@@ -731,16 +757,17 @@ html.is-scrolled .scroll-progress {
 }
 
 .copy-btn.is-copied {
-  background: rgba(108, 203, 95, 0.16);
+  background-color: rgba(25, 48, 39, 0.97);
   border-color: rgba(108, 203, 95, 0.54);
   box-shadow:
+    -12px 0 18px rgba(7, 15, 24, 0.88),
     0 0 0 1px rgba(108, 203, 95, 0.14),
     0 4px 16px rgba(108, 203, 95, 0.22),
     inset 0 1px 0 rgba(183, 245, 173, 0.22);
 }
 
 .copy-btn.is-copied:hover {
-  background: rgba(108, 203, 95, 0.22);
+  background-color: rgba(31, 59, 43, 0.98);
   border-color: rgba(108, 203, 95, 0.66);
 }
 
@@ -1407,6 +1434,7 @@ html.is-scrolled .scroll-progress {
   padding: 24px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .install-card-head {
@@ -1439,6 +1467,10 @@ html.is-scrolled .scroll-progress {
   font-variant-numeric: tabular-nums;
 }
 
+.install-block {
+  min-width: 0;
+}
+
 .install-block + .install-block {
   margin-top: 18px;
 }
@@ -1456,6 +1488,10 @@ html.is-scrolled .scroll-progress {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 42px;
   padding: 6px 6px 6px 12px;
   border-radius: 8px;
   background: var(--bg-code);
@@ -1466,9 +1502,11 @@ html.is-scrolled .scroll-progress {
 .winget-command-row .winget-code {
   flex: 1;
   min-width: 0;
+  padding-right: 78px;
 }
 
 .winget-command-row .copy-btn {
+  right: 6px;
   border-radius: 5px;
 }
 
@@ -1748,16 +1786,30 @@ html.is-scrolled .scroll-progress {
   font-variant-numeric: tabular-nums;
 }
 
-/* Footer */
-.footer,
-.footer[data-pixel-surface] {
+/* Footer & seamless mobile overscroll backdrop */
+.footer-backdrop,
+.footer-backdrop[data-pixel-surface] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -120px;
+  height: calc(65vh + 120px);
+  z-index: 0;
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  background: rgba(8, 17, 27, 0.76);
+}
+
+.footer {
   position: relative;
   z-index: 2;
-  margin-top: 32px;
+  margin-top: 0;
   border: 0;
   border-top: 1px solid var(--stroke-divider);
   border-radius: 0;
   padding: 32px 0;
+  background: transparent;
 }
 
 .footer-inner {
@@ -1819,12 +1871,12 @@ html.is-scrolled .scroll-progress {
 @media (max-width: 920px) {
   .hero-grid,
   .install-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 28px;
   }
 
   .benchmark-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }
 
@@ -1856,7 +1908,7 @@ html.is-scrolled .scroll-progress {
 
   .hero {
     min-height: 82vh;
-    padding: 76px 0 88px;
+    padding: 144px 0 88px;
   }
 
   .demo-card {
@@ -1864,7 +1916,7 @@ html.is-scrolled .scroll-progress {
   }
 
   .features-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .dim-flyout {
@@ -2125,7 +2177,7 @@ html.anim-ready [data-reveal-surface].is-revealed .settings-list li:nth-child(3)
 html.anim-ready [data-reveal-surface].is-revealed .settings-list li:nth-child(4) { transition-delay: 355ms; }
 
 /* Footer reveal */
-html.anim-ready .footer[data-reveal] {
+html.anim-ready .footer[data-reveal] .footer-inner {
   opacity: 0;
   transform: translate3d(0, 14px, 0);
   transition:
@@ -2133,7 +2185,7 @@ html.anim-ready .footer[data-reveal] {
     transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-html.anim-ready .footer[data-reveal].is-revealed {
+html.anim-ready .footer[data-reveal].is-revealed .footer-inner {
   opacity: 1;
   transform: translate3d(0, 0, 0);
 }
