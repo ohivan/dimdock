@@ -350,7 +350,7 @@ internal sealed class FlyoutWindow : IDisposable
             _hwnd = NativeMethods.CreateWindowExW(
                 NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_TOPMOST,
                 WindowClassName,
-                "DimDock",
+                "Dim Dock",
                 NativeMethods.WS_POPUP | NativeMethods.WS_CLIPCHILDREN | NativeMethods.WS_CLIPSIBLINGS,
                 0, 0, 356, 145,
                 IntPtr.Zero,

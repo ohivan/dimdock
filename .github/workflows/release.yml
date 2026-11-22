@@ -1,4 +1,4 @@
-name: Release DimDock
+name: Release Dim Dock
 
 on:
   push:
@@ -39,7 +39,7 @@ jobs:
             $ver = "${{ github.ref_name }}".TrimStart('v')
           }
           "VERSION=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Releasing DimDock v$ver"
+          Write-Host "Releasing Dim Dock v$ver"
 
       - name: Run Unit Tests
         run: dotnet test DimDock.slnx -c Release
@@ -75,7 +75,7 @@ jobs:
             '-v', '${{ steps.version.outputs.VERSION }}',
             '-p', 'publish-output',
             '--mainExe', 'DimDock.exe',
-            '--packTitle', 'DimDock',
+            '--packTitle', 'Dim Dock',
             '--packAuthors', 'ohivan',
             '--outputDir', 'Releases'
           )
@@ -92,7 +92,7 @@ jobs:
             --token "${{ secrets.GITHUB_TOKEN }}" `
             --outputDir Releases `
             --tag "v${{ steps.version.outputs.VERSION }}" `
-            --releaseName "DimDock v${{ steps.version.outputs.VERSION }}" `
+            --releaseName "Dim Dock v${{ steps.version.outputs.VERSION }}" `
             --publish
 
       - name: Submit WinGet Manifest Update (when WINGET_PAT is configured)

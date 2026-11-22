@@ -179,7 +179,7 @@ public sealed class BrightnessController : IDisposable
     public string FormatTrayTooltip()
     {
         var targets = ResolveTrayTargets();
-        if (targets.Count == 0) return "DimDock";
+        if (targets.Count == 0) return "Dim Dock";
 
         return string.Join(Environment.NewLine, targets.Select(m => $"{m.DisplayName}: {m.Brightness}%"));
     }

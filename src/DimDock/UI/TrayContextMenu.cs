@@ -400,7 +400,7 @@ public sealed class TrayContextMenu : IDisposable
         // Exit
         items.Add(new MenuItemModel
         {
-            Text = "Exit DimDock",
+            Text = "Exit Dim Dock",
             IconGlyph = "\uE7E8",
             StaysOpenOnClick = false,
             OnClick = _ => _onExit()

@@ -19,7 +19,7 @@ public sealed class TrayIconService : IDisposable
     private int _currentIconSize;
     private bool _iconAdded;
     private bool _isDarkTaskbar;
-    private string _tooltip = "DimDock";
+    private string _tooltip = "Dim Dock";
     private bool _disposed;
 
     internal TrayIconService(Win32Dispatcher dispatcher, bool isDarkTaskbar, uint activateInstanceMessage)
