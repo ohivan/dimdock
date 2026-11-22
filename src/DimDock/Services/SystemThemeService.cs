@@ -52,11 +52,11 @@ public sealed class SystemThemeService
             resources["DimTextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0xF3, 0xF3, 0xF3));
             resources["DimTextSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
             resources["DimTextMutedBrush"] = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
-            // Exact Quick Settings surface colors over DWM transient Acrylic:
-            // #2C2C2C main surface, 1px #202020 divider, #232323 footer
-            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x2C, 0x2C, 0x2C));
-            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0xEB, 0x20, 0x20, 0x20));
-            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x23, 0x23, 0x23));
+            // Compensate for DWMSBT_TRANSIENTWINDOW's bright backdrop lift (~#505050) + 2% noise
+            // so the composited pixels land on Quick Settings' exact #2A2A2A body, #1D1D1D divider, #202020 footer.
+            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x21, 0x21, 0x21));
+            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0xEC, 0x19, 0x19, 0x19));
+            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x16, 0x16, 0x16));
             resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
         }
         else
