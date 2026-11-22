@@ -13,7 +13,7 @@
     <Product>Dim Dock</Product>
     <AssemblyTitle>Dim Dock</AssemblyTitle>
     <Description>Lightweight Windows 11 system tray DDC/CI monitor brightness manager</Description>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Authors>ohivan</Authors>
 
     <!-- NativeAOT & Footprint Optimization -->
