@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\NoiseAsset_256x256.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="DimDock.Tests" />
   </ItemGroup>
 

@@ -18,7 +18,7 @@
         PreviewKeyDown="OnWindowPreviewKeyDown">
 
     <Border x:Name="RootSurface"
-            Background="{DynamicResource DimFlyoutTintBrush}"
+            Background="Transparent"
             BorderThickness="0"
             RenderTransformOrigin="0.5,1">
         <Border.RenderTransform>
@@ -26,19 +26,18 @@
         </Border.RenderTransform>
 
         <Grid>
-            <!-- Subtle frosted Acrylic noise texture matching Windows 11 Shell flyouts -->
-            <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"
-                       IsHitTestVisible="False" />
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="1" />
+                <RowDefinition Height="48" />
+            </Grid.RowDefinitions>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Monitors List -->
-                <ScrollViewer Grid.Row="0"
-                              MaxHeight="420"
+            <!-- Main Body (#2C2C2C dark + 2% Acrylic noise) -->
+            <Grid Grid.Row="0"
+                  Background="{DynamicResource DimFlyoutTintBrush}">
+                <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"
+                           IsHitTestVisible="False" />
+                <ScrollViewer MaxHeight="420"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <Grid Margin="20,18,20,6">
@@ -133,39 +132,38 @@
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
+            </Grid>
 
-                <!-- Footer (49px total matching Windows 11 Quick Settings, with soft recessed shadow instead of a bright stroke) -->
-                <Grid Grid.Row="1"
-                      Height="49"
-                      Background="{DynamicResource DimFooterTintBrush}">
-                    <!-- Soft recessed top shadow edge -->
-                    <Rectangle Height="6"
-                               VerticalAlignment="Top"
-                               IsHitTestVisible="False"
-                               Fill="{DynamicResource DimFooterShadowBrush}" />
+            <!-- 1px Divider (#1D1D1D dark) -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource DimDividerBrush}" />
 
-                    <Grid Margin="20,0,14,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+            <!-- 48px Footer (#202020 dark + 2% Acrylic noise; 1px + 48px = 49px matching Quick Settings) -->
+            <Grid Grid.Row="2"
+                  Background="{DynamicResource DimFooterTintBrush}">
+                <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"
+                           IsHitTestVisible="False" />
+                <Grid Margin="20,0,14,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0"
-                                   Text="Adjust Brightness"
-                                   FontSize="13"
-                                   Foreground="{DynamicResource DimTextSecondaryBrush}"
-                                   VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0"
+                               Text="Adjust Brightness"
+                               FontSize="13"
+                               Foreground="{DynamicResource DimTextSecondaryBrush}"
+                               VerticalAlignment="Center" />
 
-                        <ToggleButton x:Name="LinkToggleButton"
-                                      Grid.Column="1"
-                                      Style="{StaticResource DimDockFooterToggleStyle}"
-                                      ToolTip="Link all monitors"
-                                      Click="OnLinkToggleClicked">
-                            <TextBlock Text="&#xE71B;"
-                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                       FontSize="14" />
-                        </ToggleButton>
-                    </Grid>
+                    <ToggleButton x:Name="LinkToggleButton"
+                                  Grid.Column="1"
+                                  Style="{StaticResource DimDockFooterToggleStyle}"
+                                  ToolTip="Link all monitors"
+                                  Click="OnLinkToggleClicked">
+                        <TextBlock Text="&#xE71B;"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="14" />
+                    </ToggleButton>
                 </Grid>
             </Grid>
         </Grid>
