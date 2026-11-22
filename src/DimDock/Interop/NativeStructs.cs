@@ -133,7 +133,7 @@ internal unsafe struct DISPLAYCONFIG_SOURCE_DEVICE_NAME
     {
         fixed (char* ptr = viewGdiDeviceName)
         {
-            return new string(ptr);
+            return FixedBufferString.Read(ptr, 32);
         }
     }
 }
@@ -154,7 +154,7 @@ internal unsafe struct DISPLAYCONFIG_TARGET_DEVICE_NAME
     {
         fixed (char* ptr = monitorFriendlyDeviceName)
         {
-            return new string(ptr);
+            return FixedBufferString.Read(ptr, 64);
         }
     }
 
@@ -162,8 +162,18 @@ internal unsafe struct DISPLAYCONFIG_TARGET_DEVICE_NAME
     {
         fixed (char* ptr = monitorDevicePath)
         {
-            return new string(ptr);
+            return FixedBufferString.Read(ptr, 128);
         }
+    }
+}
+
+internal static unsafe class FixedBufferString
+{
+    public static string Read(char* buffer, int maxLength)
+    {
+        var span = new ReadOnlySpan<char>(buffer, maxLength);
+        int nullIndex = span.IndexOf('\0');
+        return nullIndex >= 0 ? new string(span[..nullIndex]) : new string(span);
     }
 }
 

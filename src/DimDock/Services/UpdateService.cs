@@ -14,33 +14,52 @@ public enum UpdateState
     Error
 }
 
+internal interface IUpdateBackend
+{
+    bool IsInstalled { get; }
+    string? CurrentVersion { get; }
+    Task<PendingUpdateHandle?> CheckForUpdatesAsync(CancellationToken ct);
+    Task DownloadUpdatesAsync(PendingUpdateHandle update, CancellationToken ct);
+    void ApplyUpdatesAndRestart(PendingUpdateHandle update);
+    void WaitExitThenApplyUpdates(PendingUpdateHandle update);
+}
+
+internal sealed record PendingUpdateHandle(string Version, UpdateInfo? NativeInfo);
+
 public sealed class UpdateService : IDisposable
 {
     private const string RepoUrl = "https://github.com/ohivan/dimdock";
 
-    private readonly UpdateManager _updateManager;
+    private readonly IUpdateBackend _backend;
+    private readonly TimeSpan _idleResetDelay;
     private readonly SemaphoreSlim _checkLock = new(1, 1);
     private readonly CancellationTokenSource _cts = new();
-    private UpdateInfo? _pendingUpdate;
-    private bool _disposed;
+    private volatile PendingUpdateHandle? _pendingUpdate;
+    private int _state = (int)UpdateState.Idle;
+    private int _disposed;
 
     public UpdateService()
+        : this(new VelopackUpdateBackend(RepoUrl), TimeSpan.FromSeconds(4))
     {
-        var source = new GithubSource(RepoUrl, accessToken: null, prerelease: false);
-        _updateManager = new UpdateManager(source);
     }
 
-    public bool IsInstalled => _updateManager.IsInstalled;
-    public UpdateState State { get; private set; } = UpdateState.Idle;
-    public string? AvailableVersion => _pendingUpdate?.TargetFullRelease.Version.ToString();
+    internal UpdateService(IUpdateBackend backend, TimeSpan? idleResetDelay = null)
+    {
+        _backend = backend;
+        _idleResetDelay = idleResetDelay ?? TimeSpan.FromSeconds(4);
+    }
+
+    public bool IsInstalled => _backend.IsInstalled;
+    public UpdateState State => (UpdateState)Volatile.Read(ref _state);
+    public string? AvailableVersion => _pendingUpdate?.Version;
 
     public string CurrentVersion
     {
         get
         {
-            if (_updateManager.CurrentVersion is { } installedVer)
+            if (!string.IsNullOrWhiteSpace(_backend.CurrentVersion))
             {
-                return installedVer.ToString();
+                return _backend.CurrentVersion;
             }
 
             var asmVer = Assembly.GetExecutingAssembly().GetName().Version;
@@ -52,31 +71,45 @@ public sealed class UpdateService : IDisposable
 
     public void StartPeriodicChecks()
     {
-        if (!IsInstalled || _disposed) return;
+        if (!IsInstalled || IsDisposed) return;
+
+        CancellationToken ct;
+        try
+        {
+            ct = _cts.Token;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
 
         _ = Task.Run(async () =>
         {
             try
             {
                 // Wait briefly after startup so initial boot stays instant.
-                await Task.Delay(TimeSpan.FromSeconds(15), _cts.Token).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false);
 
-                while (!_cts.Token.IsCancellationRequested)
+                while (!ct.IsCancellationRequested)
                 {
                     await CheckAndDownloadAsync(isManual: false).ConfigureAwait(false);
-                    await Task.Delay(TimeSpan.FromHours(6), _cts.Token).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromHours(6), ct).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
             {
                 // Expected on exit.
             }
+            catch (ObjectDisposedException)
+            {
+                // Expected if disposed concurrently.
+            }
         });
     }
 
     public async Task CheckAndDownloadAsync(bool isManual)
     {
-        if (_disposed) return;
+        if (IsDisposed) return;
         if (_pendingUpdate is not null)
         {
             SetState(UpdateState.ReadyToRestart);
@@ -93,16 +126,31 @@ public sealed class UpdateService : IDisposable
             return;
         }
 
-        if (!await _checkLock.WaitAsync(0).ConfigureAwait(false))
+        CancellationToken ct;
+        try
+        {
+            ct = _cts.Token;
+            if (!await _checkLock.WaitAsync(0, ct).ConfigureAwait(false))
+            {
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ObjectDisposedException)
         {
             return;
         }
 
         try
         {
+            if (IsDisposed) return;
+
             SetState(UpdateState.Checking);
 
-            var updateInfo = await _updateManager.CheckForUpdatesAsync().ConfigureAwait(false);
+            var updateInfo = await _backend.CheckForUpdatesAsync(ct).ConfigureAwait(false);
             if (updateInfo is null)
             {
                 SetState(isManual ? UpdateState.UpToDate : UpdateState.Idle);
@@ -111,74 +159,158 @@ public sealed class UpdateService : IDisposable
             }
 
             SetState(UpdateState.Downloading);
-            await _updateManager.DownloadUpdatesAsync(updateInfo, cancelToken: _cts.Token).ConfigureAwait(false);
+            await _backend.DownloadUpdatesAsync(updateInfo, ct).ConfigureAwait(false);
 
             _pendingUpdate = updateInfo;
+            AppLogger.Info($"Downloaded DimDock update v{updateInfo.Version}");
             SetState(UpdateState.ReadyToRestart);
         }
         catch (OperationCanceledException)
         {
             // Expected on shutdown.
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Warn("Update check/download failed", ex);
             SetState(isManual ? UpdateState.Error : UpdateState.Idle);
             if (isManual) ScheduleIdleReset();
         }
         finally
         {
-            _checkLock.Release();
+            try
+            {
+                _checkLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore if disposed while unwinding.
+            }
         }
     }
 
     public void ApplyPendingUpdateAndRestart()
     {
-        if (_pendingUpdate is null || !IsInstalled) return;
-        _updateManager.ApplyUpdatesAndRestart(_pendingUpdate);
+        var pending = _pendingUpdate;
+        if (pending is null || !IsInstalled) return;
+
+        try
+        {
+            _backend.ApplyUpdatesAndRestart(pending);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Failed to apply update and restart", ex);
+        }
     }
 
     public void ApplyPendingUpdateOnExit()
     {
-        if (_pendingUpdate is null || !IsInstalled) return;
+        var pending = _pendingUpdate;
+        if (pending is null || !IsInstalled) return;
+
         try
         {
-            _updateManager.WaitExitThenApplyUpdates(_pendingUpdate, silent: true, restart: false);
+            _backend.WaitExitThenApplyUpdates(pending);
         }
-        catch
+        catch (Exception ex)
         {
-            // Never block shutdown on updater error.
+            AppLogger.Warn("Failed to stage pending update on exit", ex);
         }
     }
 
+    private bool IsDisposed => Volatile.Read(ref _disposed) != 0;
+
     private void ScheduleIdleReset()
     {
+        if (IsDisposed) return;
+
+        CancellationToken ct;
+        try
+        {
+            ct = _cts.Token;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(4), _cts.Token).ConfigureAwait(false);
-                if (_pendingUpdate is null && State is UpdateState.UpToDate or UpdateState.Error)
+                if (_idleResetDelay > TimeSpan.Zero)
+                {
+                    await Task.Delay(_idleResetDelay, ct).ConfigureAwait(false);
+                }
+
+                if (!IsDisposed && _pendingUpdate is null && State is UpdateState.UpToDate or UpdateState.Error)
                 {
                     SetState(UpdateState.Idle);
                 }
             }
             catch (OperationCanceledException) { }
+            catch (ObjectDisposedException) { }
         });
     }
 
     private void SetState(UpdateState next)
     {
-        if (State == next) return;
-        State = next;
+        int previous = Interlocked.Exchange(ref _state, (int)next);
+        if (previous == (int)next) return;
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _cts.Cancel();
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        try { _cts.Cancel(); } catch (ObjectDisposedException) { }
         _cts.Dispose();
         _checkLock.Dispose();
+    }
+
+    private sealed class VelopackUpdateBackend : IUpdateBackend
+    {
+        private readonly UpdateManager _manager;
+
+        public VelopackUpdateBackend(string repoUrl)
+        {
+            var source = new GithubSource(repoUrl, accessToken: null, prerelease: false);
+            _manager = new UpdateManager(source);
+        }
+
+        public bool IsInstalled => _manager.IsInstalled;
+        public string? CurrentVersion => _manager.CurrentVersion?.ToString();
+
+        public async Task<PendingUpdateHandle?> CheckForUpdatesAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            var info = await _manager.CheckForUpdatesAsync().ConfigureAwait(false);
+            return info is null
+                ? null
+                : new PendingUpdateHandle(info.TargetFullRelease.Version.ToString(), info);
+        }
+
+        public Task DownloadUpdatesAsync(PendingUpdateHandle update, CancellationToken ct)
+        {
+            if (update.NativeInfo is null) return Task.CompletedTask;
+            return _manager.DownloadUpdatesAsync(update.NativeInfo, cancelToken: ct);
+        }
+
+        public void ApplyUpdatesAndRestart(PendingUpdateHandle update)
+        {
+            if (update.NativeInfo is not null)
+            {
+                _manager.ApplyUpdatesAndRestart(update.NativeInfo);
+            }
+        }
+
+        public void WaitExitThenApplyUpdates(PendingUpdateHandle update)
+        {
+            if (update.NativeInfo is not null)
+            {
+                _manager.WaitExitThenApplyUpdates(update.NativeInfo, silent: true, restart: false);
+            }
+        }
     }
 }

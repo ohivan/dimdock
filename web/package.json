@@ -1,0 +1,10 @@
+{
+  "name": "dimdock-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "dev:cf": "npx wrangler dev",
+    "deploy": "npx wrangler deploy"
+  }
+}

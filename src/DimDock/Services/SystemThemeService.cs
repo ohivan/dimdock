@@ -42,39 +42,46 @@ public sealed class SystemThemeService
 #pragma warning restore WPF0001
 
         var resources = app.Resources;
-        resources["DimAccentBrush"] = new SolidColorBrush(snapshot.AccentColor);
-        resources["DimAccentHoverBrush"] = new SolidColorBrush(snapshot.AccentHoverColor);
-        resources["DimAccentPressedBrush"] = new SolidColorBrush(snapshot.AccentPressedColor);
+        resources["DimAccentBrush"] = CreateFrozenBrush(snapshot.AccentColor);
+        resources["DimAccentHoverBrush"] = CreateFrozenBrush(snapshot.AccentHoverColor);
+        resources["DimAccentPressedBrush"] = CreateFrozenBrush(snapshot.AccentPressedColor);
         resources["DimAcrylicNoiseBrush"] = NoiseBrush.Value;
 
         if (snapshot.IsAppDark)
         {
-            resources["DimTextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0xF3, 0xF3, 0xF3));
-            resources["DimTextSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
-            resources["DimTextMutedBrush"] = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
+            resources["DimTextPrimaryBrush"] = CreateFrozenBrush(Color.FromRgb(0xF3, 0xF3, 0xF3));
+            resources["DimTextSecondaryBrush"] = CreateFrozenBrush(Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
+            resources["DimTextMutedBrush"] = CreateFrozenBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
             // Compensate for DWMSBT_TRANSIENTWINDOW's bright backdrop lift (~#505050) + 2% noise
             // so the composited pixels land on Quick Settings' exact #2A2A2A body, #1D1D1D divider, #202020 footer.
-            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x21, 0x21, 0x21));
-            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0xEC, 0x19, 0x19, 0x19));
-            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0x16, 0x16, 0x16));
-            resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
-            resources["DimMenuPopupBgBrush"] = new SolidColorBrush(Color.FromRgb(0x2C, 0x2C, 0x2C));
-            resources["DimMenuPopupBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF));
-            resources["DimAccentForegroundBrush"] = new SolidColorBrush(Color.FromRgb(0x0A, 0x0A, 0x0A));
+            resources["DimFlyoutTintBrush"] = CreateFrozenBrush(Color.FromArgb(0xD8, 0x21, 0x21, 0x21));
+            resources["DimDividerBrush"] = CreateFrozenBrush(Color.FromArgb(0xEC, 0x19, 0x19, 0x19));
+            resources["DimFooterTintBrush"] = CreateFrozenBrush(Color.FromArgb(0xD8, 0x16, 0x16, 0x16));
+            resources["DimButtonHoverBrush"] = CreateFrozenBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+            resources["DimMenuPopupBgBrush"] = CreateFrozenBrush(Color.FromRgb(0x2C, 0x2C, 0x2C));
+            resources["DimMenuPopupBorderBrush"] = CreateFrozenBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF));
+            resources["DimAccentForegroundBrush"] = CreateFrozenBrush(Color.FromRgb(0x0A, 0x0A, 0x0A));
         }
         else
         {
-            resources["DimTextPrimaryBrush"] = new SolidColorBrush(Color.FromRgb(0x1B, 0x1B, 0x1B));
-            resources["DimTextSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xB8, 0x00, 0x00, 0x00));
-            resources["DimTextMutedBrush"] = new SolidColorBrush(Color.FromArgb(0x88, 0x00, 0x00, 0x00));
-            resources["DimFlyoutTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0xF3, 0xF3, 0xF3));
-            resources["DimDividerBrush"] = new SolidColorBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
-            resources["DimFooterTintBrush"] = new SolidColorBrush(Color.FromArgb(0xD8, 0xE8, 0xE8, 0xE8));
-            resources["DimButtonHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x0E, 0x00, 0x00, 0x00));
-            resources["DimMenuPopupBgBrush"] = new SolidColorBrush(Color.FromRgb(0xF9, 0xF9, 0xF9));
-            resources["DimMenuPopupBorderBrush"] = new SolidColorBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
-            resources["DimAccentForegroundBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            resources["DimTextPrimaryBrush"] = CreateFrozenBrush(Color.FromRgb(0x1B, 0x1B, 0x1B));
+            resources["DimTextSecondaryBrush"] = CreateFrozenBrush(Color.FromArgb(0xB8, 0x00, 0x00, 0x00));
+            resources["DimTextMutedBrush"] = CreateFrozenBrush(Color.FromArgb(0x88, 0x00, 0x00, 0x00));
+            resources["DimFlyoutTintBrush"] = CreateFrozenBrush(Color.FromArgb(0xD8, 0xF3, 0xF3, 0xF3));
+            resources["DimDividerBrush"] = CreateFrozenBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
+            resources["DimFooterTintBrush"] = CreateFrozenBrush(Color.FromArgb(0xD8, 0xE8, 0xE8, 0xE8));
+            resources["DimButtonHoverBrush"] = CreateFrozenBrush(Color.FromArgb(0x0E, 0x00, 0x00, 0x00));
+            resources["DimMenuPopupBgBrush"] = CreateFrozenBrush(Color.FromRgb(0xF9, 0xF9, 0xF9));
+            resources["DimMenuPopupBorderBrush"] = CreateFrozenBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
+            resources["DimAccentForegroundBrush"] = CreateFrozenBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
         }
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private static ImageBrush CreateNoiseBrush()
@@ -115,9 +122,10 @@ public sealed class SystemThemeService
                 isTaskbarDark = sysLight == 0;
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Default to Windows 11 dark appearance.
+            AppLogger.Warn("Failed to read Windows theme personalization registry keys", ex);
         }
 
         var (accent, hover, pressed) = ReadAccentColors(isAppDark);
@@ -152,9 +160,10 @@ public sealed class SystemThemeService
                 return (mainColor, hoverColor, pressedColor);
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Fall through to DWM colorization.
+            AppLogger.Warn("Failed to read AccentPalette from registry", ex);
         }
 
         try

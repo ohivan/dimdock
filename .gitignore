@@ -16,6 +16,11 @@ artifacts/
 *.nupkg
 *.snupkg
 
+## Web / Cloudflare
+node_modules/
+.wrangler/
+web/dist/
+
 ## IDE / OS
 .vscode/
 .idea/

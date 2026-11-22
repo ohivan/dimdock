@@ -17,8 +17,9 @@ public sealed class StartupService
                 var raw = key?.GetValue(ValueName) as string;
                 return !string.IsNullOrWhiteSpace(raw);
             }
-            catch
+            catch (Exception ex)
             {
+                AppLogger.Warn("Failed to read Windows startup registry entry", ex);
                 return false;
             }
         }
@@ -46,8 +47,9 @@ public sealed class StartupService
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Warn($"Failed to update Windows startup registry entry (enabled={enabled})", ex);
             return false;
         }
     }

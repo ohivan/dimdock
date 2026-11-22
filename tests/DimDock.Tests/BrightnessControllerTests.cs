@@ -131,6 +131,84 @@ public sealed class BrightnessControllerTests : IDisposable
         Assert.Equal(2, backend.TotalWrites);
     }
 
+    [Fact]
+    public async Task ConcurrentWritesDuringRefreshAndDispose_DoNotThrow()
+    {
+        var backend = new FakeMonitorBackend(
+            new MonitorInfo("m1", "LG HDR 4K", @"\\.\DISPLAY1", true, 50, 0, 100, false),
+            new MonitorInfo("m2", "DELL U2415", @"\\.\DISPLAY2", false, 50, 0, 100, false))
+        {
+            SimulatedWriteDelayMs = 2
+        };
+
+        var controller = new BrightnessController(backend, new SettingsService(_settingsPath), TimeSpan.FromMilliseconds(1));
+        await controller.RefreshMonitorsAsync();
+
+        using var cts = new CancellationTokenSource();
+        var writerTask = Task.Run(() =>
+        {
+            int val = 0;
+            while (!cts.Token.IsCancellationRequested)
+            {
+                controller.SetMonitorBrightness("m1", val % 101);
+                controller.SetMonitorBrightness("m2", (val + 50) % 101);
+                val++;
+            }
+        });
+
+        for (int i = 0; i < 5; i++)
+        {
+            await controller.RefreshMonitorsAsync();
+            await Task.Delay(5);
+        }
+
+        controller.Dispose();
+        cts.Cancel();
+        await writerTask;
+    }
+
+    [Fact]
+    public async Task StepTrayBrightness_WhenLinked_SyncsAroundAverage()
+    {
+        var backend = new FakeMonitorBackend(
+            new MonitorInfo("m1", "LG HDR 4K", @"\\.\DISPLAY1", true, 30, 0, 100, false),
+            new MonitorInfo("m2", "DELL U2415", @"\\.\DISPLAY2", false, 70, 0, 100, false));
+
+        using var controller = new BrightnessController(backend, new SettingsService(_settingsPath), TimeSpan.Zero);
+        await controller.RefreshMonitorsAsync();
+        controller.SetLinkMonitors(true);
+        controller.SetScrollStep(10);
+
+        int? summary = controller.StepTrayBrightness(+1); // average 50 + 10 = 60
+        await controller.FlushPendingWritesAsync();
+
+        Assert.Equal(60, summary);
+        Assert.Equal(60, controller.Monitors[0].Brightness);
+        Assert.Equal(60, controller.Monitors[1].Brightness);
+        Assert.Equal(60, backend.LastWritten["m1"]);
+        Assert.Equal(60, backend.LastWritten["m2"]);
+    }
+
+    [Fact]
+    public async Task StepMonitorBrightness_StepsSingleMonitorByConfiguredStep()
+    {
+        var backend = new FakeMonitorBackend(
+            new MonitorInfo("m1", "LG HDR 4K", @"\\.\DISPLAY1", true, 98, 0, 100, false),
+            new MonitorInfo("m2", "DELL U2415", @"\\.\DISPLAY2", false, 40, 0, 100, false));
+
+        using var controller = new BrightnessController(backend, new SettingsService(_settingsPath), TimeSpan.Zero);
+        await controller.RefreshMonitorsAsync();
+        controller.SetScrollStep(5);
+
+        controller.StepMonitorBrightness("m1", +1);
+        await controller.FlushPendingWritesAsync();
+
+        Assert.Equal(100, controller.Monitors[0].Brightness);
+        Assert.Equal(40, controller.Monitors[1].Brightness);
+        Assert.Equal(100, backend.LastWritten["m1"]);
+        Assert.False(backend.LastWritten.ContainsKey("m2"));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_tempDir, recursive: true); } catch { }

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -21,13 +19,13 @@ public partial class FlyoutWindow : Window
     private readonly BrightnessController _controller;
     private readonly TrayIconService _trayIconService;
     private readonly SystemThemeService _themeService;
+    private readonly NativeVSyncSlideAnimator _slideAnimator;
     private DateTime _lastDeactivatedUtc = DateTime.MinValue;
     private bool _isClosing;
     private bool _isHidingAnimated;
     private bool _isCloaked;
 
-    // Active native-VSync (DwmFlush) slide animation state
-    private CancellationTokenSource? _slideCts;
+    // Warmup frame state before uncloaking and starting the VSync slide
     private bool _isWaitingWarmup;
     private int _warmupFramesRemaining;
     private int _pendingX;
@@ -45,6 +43,7 @@ public partial class FlyoutWindow : Window
         _controller = controller;
         _trayIconService = trayIconService;
         _themeService = themeService;
+        _slideAnimator = new NativeVSyncSlideAnimator(Dispatcher);
 
         MonitorsList.ItemsSource = _controller.Monitors;
 
@@ -198,7 +197,7 @@ public partial class FlyoutWindow : Window
             ? "Monitors linked (click to unlink)"
             : "Link all monitors";
 
-        if (IsVisible && _slideCts is null && !_isWaitingWarmup && !_isHidingAnimated)
+        if (IsVisible && !_slideAnimator.IsRunning && !_isWaitingWarmup && !_isHidingAnimated)
         {
             UpdateLayout();
             var placement = ComputePlacement();
@@ -260,6 +259,7 @@ public partial class FlyoutWindow : Window
     {
         _isClosing = true;
         StopSlideAnimation();
+        _slideAnimator.Dispose();
         Close();
     }
 
@@ -289,87 +289,21 @@ public partial class FlyoutWindow : Window
     private void BeginNativeVSyncSlide(IntPtr hwnd, bool opening, int xPx, int startYPx, int endYPx, double durationMs)
     {
         StopSlideAnimation();
-
-        var cts = new CancellationTokenSource();
-        _slideCts = cts;
-        var ct = cts.Token;
-
-        // Run a dedicated DwmFlush() loop so movement locks to the monitor's true native refresh rate
-        // (e.g. 240Hz / 144Hz / 60Hz) instead of WPF's 60fps CompositionTarget cap.
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                long startTicks = Stopwatch.GetTimestamp();
-                int lastY = startYPx;
-
-                while (!ct.IsCancellationRequested)
+        _slideAnimator.Start(
+            hwnd,
+            opening,
+            xPx,
+            startYPx,
+            endYPx,
+            durationMs,
+            onCompleted: opening
+                ? null
+                : () =>
                 {
-                    if (NativeMethods.DwmFlush() != 0)
-                    {
-                        Thread.Sleep(4);
-                    }
-
-                    if (ct.IsCancellationRequested) break;
-
-                    double elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-                    double t = Math.Clamp(elapsedMs / durationMs, 0.0, 1.0);
-
-                    // Official Windows 11 Fluent 2 Control Center curves:
-                    // Open:  cubic-bezier(0.1, 0.9, 0.2, 1.0) — explosive start, long smooth settle
-                    // Close: cubic-bezier(0.7, 0.0, 1.0, 0.5) — gentle pull-off, fast whip into taskbar
-                    double eased = opening
-                        ? EvaluateCubicBezier(t, 0.1, 0.9, 0.2, 1.0)
-                        : EvaluateCubicBezier(t, 0.7, 0.0, 1.0, 0.5);
-
-                    int currentY = (int)Math.Round(startYPx + (endYPx - startYPx) * eased);
-                    if (currentY != lastY)
-                    {
-                        lastY = currentY;
-                        NativeMethods.SetWindowPos(
-                            hwnd,
-                            IntPtr.Zero,
-                            xPx,
-                            currentY,
-                            0,
-                            0,
-                            NativeMethods.SWP_NOSIZE |
-                            NativeMethods.SWP_NOACTIVATE |
-                            NativeMethods.SWP_NOZORDER |
-                            NativeMethods.SWP_ASYNCWINDOWPOS);
-                    }
-
-                    if (t >= 1.0) break;
-                }
-
-                if (!ct.IsCancellationRequested)
-                {
-                    Dispatcher.BeginInvoke(() =>
-                    {
-                        if (!ReferenceEquals(_slideCts, cts)) return;
-                        _slideCts = null;
-
-                        if (!opening)
-                        {
-                            _isHidingAnimated = false;
-                            SetCloaked(hwnd, false);
-                            Hide();
-                        }
-                    });
-                }
-            }
-            finally
-            {
-                cts.Dispose();
-            }
-        })
-        {
-            IsBackground = true,
-            Priority = ThreadPriority.AboveNormal,
-            Name = "DimDock_VSyncSlide"
-        };
-
-        thread.Start();
+                    _isHidingAnimated = false;
+                    SetCloaked(hwnd, false);
+                    Hide();
+                });
     }
 
     private void StopSlideAnimation()
@@ -381,53 +315,7 @@ public partial class FlyoutWindow : Window
             CompositionTarget.Rendering -= OnWarmupFrame;
         }
 
-        if (_slideCts is { } cts)
-        {
-            _slideCts = null;
-            try { cts.Cancel(); } catch (ObjectDisposedException) { }
-        }
-    }
-
-    private static double EvaluateCubicBezier(double x, double x1, double y1, double x2, double y2)
-    {
-        if (x <= 0.0) return 0.0;
-        if (x >= 1.0) return 1.0;
-
-        // Solve bezier X(u) = x via Newton-Raphson with binary search fallback.
-        double u = x;
-        for (int i = 0; i < 6; i++)
-        {
-            double bx = SampleBezier(u, x1, x2) - x;
-            if (Math.Abs(bx) < 1e-5) break;
-            double dx = SampleBezierDerivative(u, x1, x2);
-            if (Math.Abs(dx) < 1e-6) break;
-            u = Math.Clamp(u - bx / dx, 0.0, 1.0);
-        }
-
-        if (Math.Abs(SampleBezier(u, x1, x2) - x) > 1e-4)
-        {
-            double lo = 0.0, hi = 1.0;
-            for (int i = 0; i < 12; i++)
-            {
-                u = (lo + hi) * 0.5;
-                if (SampleBezier(u, x1, x2) < x) lo = u;
-                else hi = u;
-            }
-        }
-
-        return SampleBezier(u, y1, y2);
-    }
-
-    private static double SampleBezier(double u, double p1, double p2)
-    {
-        double inv = 1.0 - u;
-        return 3.0 * inv * inv * u * p1 + 3.0 * inv * u * u * p2 + u * u * u;
-    }
-
-    private static double SampleBezierDerivative(double u, double p1, double p2)
-    {
-        double inv = 1.0 - u;
-        return 3.0 * inv * inv * p1 + 6.0 * inv * u * (p2 - p1) + 3.0 * u * u * (1.0 - p2);
+        _slideAnimator.Stop();
     }
 
     private void SetCloaked(IntPtr hwnd, bool cloaked)
@@ -449,30 +337,6 @@ public partial class FlyoutWindow : Window
         NativeMethods.SetWindowPos(hwnd, insertAfter, xPx, yPx, 0, 0, flags);
     }
 
-    private static (IntPtr Hwnd, RECT Rect) FindTaskbarForMonitor(RECT monitorRect)
-    {
-        IntPtr primary = NativeMethods.FindWindowW("Shell_TrayWnd", null);
-        if (primary != IntPtr.Zero && NativeMethods.GetWindowRect(primary, out RECT primaryRect) &&
-            RectsOverlap(primaryRect, monitorRect))
-        {
-            return (primary, primaryRect);
-        }
-
-        IntPtr secondary = IntPtr.Zero;
-        while ((secondary = NativeMethods.FindWindowExW(IntPtr.Zero, secondary, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
-        {
-            if (NativeMethods.GetWindowRect(secondary, out RECT secRect) && RectsOverlap(secRect, monitorRect))
-            {
-                return (secondary, secRect);
-            }
-        }
-
-        return (primary, default);
-    }
-
-    private static bool RectsOverlap(RECT a, RECT b) =>
-        a.Left < b.Right && a.Right > b.Left && a.Top < b.Bottom && a.Bottom > b.Top;
-
     private readonly record struct FlyoutPlacement(
         int TargetXPx,
         int TargetYPx,
@@ -483,67 +347,16 @@ public partial class FlyoutWindow : Window
 
     private FlyoutPlacement ComputePlacement()
     {
-        POINT anchorPx;
-        RECT trayRect;
-        bool hasTrayRect = _trayIconService.TryGetIconRect(out trayRect);
-
-        if (hasTrayRect)
-        {
-            anchorPx = new POINT
-            {
-                X = (trayRect.Left + trayRect.Right) / 2,
-                Y = trayRect.Top
-            };
-        }
-        else
-        {
-            NativeMethods.GetCursorPos(out anchorPx);
-            trayRect = new RECT
-            {
-                Left = anchorPx.X,
-                Top = anchorPx.Y,
-                Right = anchorPx.X,
-                Bottom = anchorPx.Y
-            };
-        }
-
-        IntPtr hMonitor = NativeMethods.MonitorFromPoint(anchorPx, NativeMethods.MONITOR_DEFAULTTONEAREST);
-        var mi = new MONITORINFOEX { cbSize = (uint)Marshal.SizeOf<MONITORINFOEX>() };
-        if (!NativeMethods.GetMonitorInfoW(hMonitor, ref mi))
+        if (!TaskbarPlacementHelper.TryResolveTrayContext(_trayIconService, out var ctx))
         {
             return new FlyoutPlacement(0, 0, 52, 1.0, false, IntPtr.Zero);
         }
 
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
-        uint dpi = hwnd != IntPtr.Zero ? NativeMethods.GetDpiForWindow(hwnd) : 96;
-        double scale = dpi > 0 ? dpi / 96.0 : 1.0;
-
-        var (taskbarHwnd, taskbarRect) = FindTaskbarForMonitor(mi.rcMonitor);
-        bool hasTaskbarRect = taskbarHwnd != IntPtr.Zero && taskbarRect.Width > 0 && taskbarRect.Height > 0;
-
-        // Account for auto-hide taskbars: when auto-hide is enabled, rcWork equals rcMonitor,
-        // so use the taskbar's live GetWindowRect top/bottom when it is popped up on screen.
-        int effectiveBottomPx = mi.rcWork.Bottom;
-        int effectiveTopPx = mi.rcWork.Top;
-        bool isTaskbarAtTop = false;
-
-        if (hasTaskbarRect)
-        {
-            int midY = (mi.rcMonitor.Top + mi.rcMonitor.Bottom) / 2;
-            bool taskbarIsHorizontal = taskbarRect.Width > taskbarRect.Height;
-
-            if (taskbarIsHorizontal && taskbarRect.Top > midY && taskbarRect.Top < mi.rcMonitor.Bottom - 4)
-            {
-                // Bottom taskbar (always-visible OR popped-up auto-hide)
-                effectiveBottomPx = Math.Min(effectiveBottomPx, taskbarRect.Top);
-            }
-            else if (taskbarIsHorizontal && taskbarRect.Bottom < midY && taskbarRect.Bottom > mi.rcMonitor.Top + 4)
-            {
-                // Top taskbar
-                isTaskbarAtTop = true;
-                effectiveTopPx = Math.Max(effectiveTopPx, taskbarRect.Bottom);
-            }
-        }
+        var mi = ctx.MonitorInfo;
+        double scale = TaskbarPlacementHelper.GetDpiScale(new WindowInteropHelper(this).Handle);
+        int effectiveTopPx = ctx.VerticalBounds.EffectiveTopPx;
+        int effectiveBottomPx = ctx.VerticalBounds.EffectiveBottomPx;
+        bool isTaskbarAtTop = ctx.VerticalBounds.IsTaskbarAtTop;
 
         double workLeft = mi.rcWork.Left / scale;
         double workRight = mi.rcWork.Right / scale;
@@ -568,7 +381,7 @@ public partial class FlyoutWindow : Window
         if (isTaskbarAtTop)
         {
             IntPtr aboveMon = NativeMethods.MonitorFromPoint(
-                new POINT { X = anchorPx.X, Y = mi.rcMonitor.Top - 10 },
+                new POINT { X = ctx.AnchorPx.X, Y = mi.rcMonitor.Top - 10 },
                 0); // MONITOR_DEFAULTTONULL
             slideDistancePx = aboveMon == IntPtr.Zero
                 ? Math.Max(48, targetYPx + (int)Math.Round(h * scale) - effectiveTopPx)
@@ -577,7 +390,7 @@ public partial class FlyoutWindow : Window
         else
         {
             IntPtr belowMon = NativeMethods.MonitorFromPoint(
-                new POINT { X = anchorPx.X, Y = mi.rcMonitor.Bottom + 10 },
+                new POINT { X = ctx.AnchorPx.X, Y = mi.rcMonitor.Bottom + 10 },
                 0); // MONITOR_DEFAULTTONULL
             // Slide completely out from behind the taskbar (top edge starts at effectiveBottomPx)
             // just like Windows 11 Control Center, unless another monitor is stacked underneath.
@@ -592,7 +405,7 @@ public partial class FlyoutWindow : Window
             SlideDistancePx: slideDistancePx,
             Scale: scale,
             IsTaskbarAtTop: isTaskbarAtTop,
-            TaskbarHwnd: taskbarHwnd);
+            TaskbarHwnd: ctx.TaskbarHwnd);
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
@@ -708,6 +521,13 @@ public partial class FlyoutWindow : Window
 
     private async void OnRefreshButtonClick(object sender, RoutedEventArgs e)
     {
-        await _controller.RefreshMonitorsAsync();
+        try
+        {
+            await _controller.RefreshMonitorsAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("Manual monitor refresh failed", ex);
+        }
     }
 }

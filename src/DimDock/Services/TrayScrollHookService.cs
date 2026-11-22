@@ -8,13 +8,13 @@ public sealed class TrayScrollHookService : IDisposable
 {
     private const int WheelDeltaUnit = 120;
 
-    private static readonly HashSet<string> TaskbarClassNames = new(StringComparer.OrdinalIgnoreCase)
-    {
+    private static readonly string[] TaskbarClassNames =
+    [
         "Shell_TrayWnd",
         "Shell_SecondaryTrayWnd",
         "NotifyIconOverflowWindow",
         "TopLevelWindowForOverflowXamlIsland"
-    };
+    ];
 
     private readonly TrayIconService _trayIconService;
     private readonly Dispatcher _dispatcher;
@@ -30,11 +30,22 @@ public sealed class TrayScrollHookService : IDisposable
         _dispatcher = dispatcher;
         _hookProc = HookCallback;
 
-        IntPtr moduleHandle = NativeMethods.GetModuleHandleW(null);
-        _hookHandle = NativeMethods.SetWindowsHookExW(NativeMethods.WH_MOUSE_LL, _hookProc, moduleHandle, 0);
+        EnsureHookInstalled();
     }
 
     public event EventHandler<int>? TrayScrolled;
+
+    public void EnsureHookInstalled()
+    {
+        if (_disposed || _hookHandle != IntPtr.Zero) return;
+
+        IntPtr moduleHandle = NativeMethods.GetModuleHandleW(null);
+        _hookHandle = NativeMethods.SetWindowsHookExW(NativeMethods.WH_MOUSE_LL, _hookProc, moduleHandle, 0);
+        if (_hookHandle == IntPtr.Zero)
+        {
+            AppLogger.Warn($"Failed to install WH_MOUSE_LL tray scroll hook (Win32 error {Marshal.GetLastWin32Error()})");
+        }
+    }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
@@ -87,8 +98,19 @@ public sealed class TrayScrollHookService : IDisposable
         int len = NativeMethods.GetClassNameW(root, _classNameBuffer, _classNameBuffer.Length);
         if (len <= 0) return false;
 
-        string className = new(_classNameBuffer, 0, len);
-        return TaskbarClassNames.Contains(className);
+        return IsTaskbarClassName(_classNameBuffer.AsSpan(0, len));
+    }
+
+    internal static bool IsTaskbarClassName(ReadOnlySpan<char> className)
+    {
+        foreach (string candidate in TaskbarClassNames)
+        {
+            if (className.Equals(candidate.AsSpan(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void Dispose()

@@ -20,6 +20,32 @@ public sealed class NativeStructLayoutTests
         Assert.Equal(420, Marshal.SizeOf<DISPLAYCONFIG_TARGET_DEVICE_NAME>());
     }
 
+    [Fact]
+    public unsafe void DisplayConfigFixedStrings_HandleUnterminatedFullBuffersSafely()
+    {
+        var source = new DISPLAYCONFIG_SOURCE_DEVICE_NAME();
+        for (int i = 0; i < 32; i++)
+        {
+            source.viewGdiDeviceName[i] = 'A';
+        }
+        Assert.Equal(new string('A', 32), source.GetDeviceName());
+
+        var target = new DISPLAYCONFIG_TARGET_DEVICE_NAME();
+        for (int i = 0; i < 64; i++)
+        {
+            target.monitorFriendlyDeviceName[i] = 'B';
+        }
+        for (int i = 0; i < 128; i++)
+        {
+            target.monitorDevicePath[i] = 'C';
+        }
+        Assert.Equal(new string('B', 64), target.GetFriendlyName());
+        Assert.Equal(new string('C', 128), target.GetDevicePath());
+
+        target.monitorFriendlyDeviceName[5] = '\0';
+        Assert.Equal("BBBBB", target.GetFriendlyName());
+    }
+
     [Theory]
     [InlineData(0u, 0u, 100u, 0)]
     [InlineData(50u, 0u, 100u, 50)]

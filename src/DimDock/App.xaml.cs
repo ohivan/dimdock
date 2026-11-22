@@ -32,6 +32,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+
         _activateMessage = NativeMethods.RegisterWindowMessageW(ActivateMessageName);
 
         bool createdNew;
@@ -69,7 +72,7 @@ public partial class App : Application
             _startupService,
             _updateService,
             _trayIconService,
-            onRefresh: () => _ = _brightnessController.RefreshMonitorsAsync(),
+            onRefresh: () => _ = SafeRefreshMonitorsAsync(),
             onLinkChanged: () => _flyoutWindow.SyncUiState(),
             onExit: ExitApplication);
 
@@ -77,10 +80,7 @@ public partial class App : Application
         _rescanDebounceTimer.Tick += async (_, _) =>
         {
             _rescanDebounceTimer.Stop();
-            if (_brightnessController is not null)
-            {
-                await _brightnessController.RefreshMonitorsAsync();
-            }
+            await SafeRefreshMonitorsAsync();
         };
 
         // Wire events
@@ -108,11 +108,35 @@ public partial class App : Application
         SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
-        await _brightnessController.RefreshMonitorsAsync();
+        await SafeRefreshMonitorsAsync();
         _trayIconService.UpdateStatus(
             _brightnessController.FormatTrayTooltip(),
             _brightnessController.GetTraySummaryPercent());
         _updateService.StartPeriodicChecks();
+    }
+
+    private async Task SafeRefreshMonitorsAsync()
+    {
+        if (_brightnessController is null) return;
+
+        try
+        {
+            await _brightnessController.RefreshMonitorsAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("Monitor refresh failed", ex);
+        }
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        AppLogger.Error("Unhandled UI dispatcher exception", e.Exception);
+    }
+
+    private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        AppLogger.Error($"Unhandled domain exception (terminating={e.IsTerminating})", e.ExceptionObject as Exception);
     }
 
     private void HandleThemeChanged()
@@ -123,6 +147,7 @@ public partial class App : Application
         _themeService.ApplyToApplication(this);
         _trayIconService.UpdateTheme(snapshot.IsTaskbarDark);
         _flyoutWindow.ApplyDwmBackdrop();
+        _scrollHookService?.EnsureHookInstalled();
     }
 
     private void OnDisplayOrPowerChanged(object? sender, EventArgs e)
@@ -149,6 +174,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        DispatcherUnhandledException -= OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException -= OnDomainUnhandledException;
         SystemEvents.DisplaySettingsChanged -= OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 

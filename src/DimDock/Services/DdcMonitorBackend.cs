@@ -10,16 +10,30 @@ public sealed class DdcMonitorBackend : IMonitorBackend
         IntPtr PhysicalHandle,
         uint MinRaw,
         uint MaxRaw,
-        bool UseVcpFallback);
+        bool UseVcpFallback)
+    {
+        public object WriteLock { get; } = new();
+    }
 
-    private readonly object _gate = new();
+    private readonly ReaderWriterLockSlim _handlesLock = new();
     private readonly Dictionary<string, HandleEntry> _handles = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<PHYSICAL_MONITOR> _ownedPhysicalMonitors = [];
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public IReadOnlyList<MonitorInfo> EnumerateMonitors()
     {
-        lock (_gate)
+        if (_disposed) return [];
+
+        try
+        {
+            _handlesLock.EnterWriteLock();
+        }
+        catch (ObjectDisposedException)
+        {
+            return [];
+        }
+
+        try
         {
             if (_disposed) return [];
             ReleaseHandlesLocked();
@@ -120,11 +134,26 @@ public sealed class DdcMonitorBackend : IMonitorBackend
 
             return results;
         }
+        finally
+        {
+            _handlesLock.ExitWriteLock();
+        }
     }
 
     public bool SetBrightness(string monitorId, int brightnessPercent)
     {
-        lock (_gate)
+        if (_disposed) return false;
+
+        try
+        {
+            _handlesLock.EnterReadLock();
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+
+        try
         {
             if (_disposed || !_handles.TryGetValue(monitorId, out var entry))
             {
@@ -133,15 +162,23 @@ public sealed class DdcMonitorBackend : IMonitorBackend
 
             uint rawValue = PercentToRaw(brightnessPercent, entry.MinRaw, entry.MaxRaw);
 
-            if (!entry.UseVcpFallback)
+            // Serialize writes per monitor so concurrent writers for different displays can proceed in parallel.
+            lock (entry.WriteLock)
             {
-                if (NativeMethods.SetMonitorBrightness(entry.PhysicalHandle, rawValue))
+                if (!entry.UseVcpFallback)
                 {
-                    return true;
+                    if (NativeMethods.SetMonitorBrightness(entry.PhysicalHandle, rawValue))
+                    {
+                        return true;
+                    }
                 }
-            }
 
-            return NativeMethods.SetVCPFeature(entry.PhysicalHandle, NativeMethods.VCP_LUMINANCE, rawValue);
+                return NativeMethods.SetVCPFeature(entry.PhysicalHandle, NativeMethods.VCP_LUMINANCE, rawValue);
+            }
+        }
+        finally
+        {
+            _handlesLock.ExitReadLock();
         }
     }
 
@@ -317,11 +354,20 @@ public sealed class DdcMonitorBackend : IMonitorBackend
 
     public void Dispose()
     {
-        lock (_gate)
+        if (_disposed) return;
+
+        _handlesLock.EnterWriteLock();
+        try
         {
             if (_disposed) return;
             _disposed = true;
             ReleaseHandlesLocked();
         }
+        finally
+        {
+            _handlesLock.ExitWriteLock();
+        }
+
+        _handlesLock.Dispose();
     }
 }

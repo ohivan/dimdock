@@ -46,9 +46,10 @@ public sealed class SettingsService
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Fall back to clean defaults if settings file is missing or corrupted.
+            AppLogger.Warn($"Failed to load settings from '{_settingsPath}', using defaults", ex);
         }
 
         Current = new AppSettings().Normalize();
@@ -70,9 +71,10 @@ public sealed class SettingsService
             File.WriteAllText(tempPath, json);
             File.Move(tempPath, _settingsPath, overwrite: true);
         }
-        catch
+        catch (Exception ex)
         {
             // Avoid crashing tray utility on transient IO lock.
+            AppLogger.Warn($"Failed to save settings to '{_settingsPath}'", ex);
         }
     }
 }

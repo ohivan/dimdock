@@ -18,6 +18,7 @@ public sealed class TrayIconService : IDisposable
     private readonly Dictionary<int, IntPtr> _iconCache = [];
     private IntPtr _currentIcon;
     private int _currentBucket = 50;
+    private int _currentIconSize;
     private bool _iconAdded;
     private bool _isDarkTaskbar;
     private string _tooltip = "DimDock";
@@ -27,6 +28,7 @@ public sealed class TrayIconService : IDisposable
     {
         _isDarkTaskbar = isDarkTaskbar;
         _activateInstanceMessage = activateInstanceMessage;
+        _currentIconSize = GetTargetIconSize();
         _taskbarCreatedMessage = NativeMethods.RegisterWindowMessageW("TaskbarCreated");
 
         var parameters = new HwndSourceParameters("DimDock_TrayHost")
@@ -94,8 +96,13 @@ public sealed class TrayIconService : IDisposable
 
     public void UpdateTheme(bool isDarkTaskbar)
     {
-        if (_disposed || _isDarkTaskbar == isDarkTaskbar) return;
+        if (_disposed) return;
+
+        int nextIconSize = GetTargetIconSize();
+        if (_isDarkTaskbar == isDarkTaskbar && _currentIconSize == nextIconSize) return;
+
         _isDarkTaskbar = isDarkTaskbar;
+        _currentIconSize = nextIconSize;
 
         // Build the new current icon first, swap it into the tray, then free old cached HICONs.
         var oldIcons = _iconCache.Values.ToList();
@@ -136,8 +143,11 @@ public sealed class TrayIconService : IDisposable
                rect.Width > 0 && rect.Height > 0;
     }
 
-    private static int QuantizeBucket(int percent) =>
+    internal static int QuantizeBucket(int percent) =>
         Math.Clamp((int)Math.Round(percent / 5.0, MidpointRounding.AwayFromZero) * 5, 0, 100);
+
+    private static int GetTargetIconSize() =>
+        Math.Clamp(NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSMICON), 16, 64);
 
     private IntPtr GetOrCreateIcon(int bucket)
     {
@@ -146,7 +156,7 @@ public sealed class TrayIconService : IDisposable
             return existing;
         }
 
-        IntPtr created = CreateSunIcon(_isDarkTaskbar, bucket);
+        IntPtr created = CreateSunIcon(_isDarkTaskbar, bucket, _currentIconSize);
         _iconCache[bucket] = created;
         return created;
     }
@@ -217,11 +227,10 @@ public sealed class TrayIconService : IDisposable
         return IntPtr.Zero;
     }
 
-    private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent)
+    private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent, int size)
     {
         // Render directly at the OS small-icon pixel size (16px @ 100%, 20px @ 125%, 24px @ 150%, 32px @ 200%)
         // so Windows doesn't soften the glyph with downscale filtering.
-        int size = Math.Clamp(NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSMICON), 16, 64);
         double s = size / 16.0;
         double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
 
