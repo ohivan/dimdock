@@ -1,17 +1,16 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DimDock.Models;
 
 namespace DimDock.Services;
 
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]
+[JsonSerializable(typeof(AppSettings))]
+internal sealed partial class AppSettingsJsonContext : JsonSerializerContext;
+
 public sealed class SettingsService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true
-    };
-
     private readonly string _settingsPath;
 
     public SettingsService(string? customSettingsPath = null)
@@ -38,7 +37,7 @@ public sealed class SettingsService
             if (File.Exists(_settingsPath))
             {
                 string json = File.ReadAllText(_settingsPath);
-                var parsed = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+                var parsed = JsonSerializer.Deserialize(json, AppSettingsJsonContext.Default.AppSettings);
                 if (parsed is not null)
                 {
                     Current = parsed.Normalize();
@@ -66,7 +65,7 @@ public sealed class SettingsService
                 Directory.CreateDirectory(dir);
             }
 
-            string json = JsonSerializer.Serialize(Current.Normalize(), JsonOptions);
+            string json = JsonSerializer.Serialize(Current.Normalize(), AppSettingsJsonContext.Default.AppSettings);
             string tempPath = _settingsPath + ".tmp";
             File.WriteAllText(tempPath, json);
             File.Move(tempPath, _settingsPath, overwrite: true);

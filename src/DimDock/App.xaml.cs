@@ -11,6 +11,8 @@ public partial class App : Application
 {
     private const string SingleInstanceMutexName = @"Local\DimDock_SingleInstance_Mutex";
     private const string ActivateMessageName = "DimDock_ActivateExistingInstance";
+    private static readonly TimeSpan StartupTrimDelay = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan IdleTeardownDelay = TimeSpan.FromSeconds(45);
 
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
@@ -27,6 +29,9 @@ public partial class App : Application
     private FlyoutWindow? _flyoutWindow;
     private TrayContextMenu? _contextMenu;
     private DispatcherTimer? _rescanDebounceTimer;
+    private DispatcherTimer? _idleTrimTimer;
+    private bool _themeApplied;
+    private bool _lastDwmBackdropActive = true;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -52,8 +57,6 @@ public partial class App : Application
         }
 
         _themeService = new SystemThemeService();
-        _themeService.ApplyToApplication(this);
-
         _settingsService = new SettingsService();
         _startupService = new StartupService();
         _updateService = new UpdateService();
@@ -64,7 +67,6 @@ public partial class App : Application
             uiInvoke: action => Dispatcher.Invoke(action));
 
         _trayIconService = new TrayIconService(_themeService.Current.IsTaskbarDark, _activateMessage);
-        _flyoutWindow = new FlyoutWindow(_brightnessController, _trayIconService, _themeService);
         _scrollHookService = new TrayScrollHookService(_trayIconService, Dispatcher);
 
         _contextMenu = new TrayContextMenu(
@@ -72,9 +74,12 @@ public partial class App : Application
             _startupService,
             _updateService,
             _trayIconService,
-            onRefresh: () => _ = SafeRefreshMonitorsAsync(),
-            onLinkChanged: () => _flyoutWindow.SyncUiState(),
+            onRefresh: SafeRefreshMonitorsAsync,
+            onLinkChanged: () => _flyoutWindow?.SyncUiState(),
             onExit: ExitApplication);
+
+        _contextMenu.MenuOpened += (_, _) => _idleTrimTimer?.Stop();
+        _contextMenu.MenuClosed += (_, _) => ScheduleIdleTrim(IdleTeardownDelay);
 
         _rescanDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
         _rescanDebounceTimer.Tick += async (_, _) =>
@@ -84,16 +89,29 @@ public partial class App : Application
             await SafeRefreshMonitorsAsync();
         };
 
+        _idleTrimTimer = new DispatcherTimer { Interval = IdleTeardownDelay };
+        _idleTrimTimer.Tick += OnIdleTrimTimerTick;
+
         // Wire events
-        _trayIconService.LeftClicked += (_, _) => _flyoutWindow.ToggleFromTray();
+        _trayIconService.LeftClicked += (_, _) =>
+        {
+            if (_flyoutWindow is { IsVisible: true })
+            {
+                _flyoutWindow.ToggleFromTray();
+                return;
+            }
+
+            GetOrCreateFlyoutWindow().ToggleFromTray();
+        };
 
         _trayIconService.RightClicked += (_, _) =>
         {
-            _flyoutWindow.HideFlyout();
+            EnsureThemeApplied();
+            _flyoutWindow?.HideFlyout();
             _contextMenu.ShowAtCursor();
         };
 
-        _trayIconService.ExternalActivateRequested += (_, _) => _flyoutWindow.ShowFlyout();
+        _trayIconService.ExternalActivateRequested += (_, _) => GetOrCreateFlyoutWindow().ShowFlyout();
         _trayIconService.SystemThemeChanged += (_, _) => HandleThemeChanged();
 
         _scrollHookService.TrayScrolled += (_, notches) =>
@@ -106,6 +124,11 @@ public partial class App : Application
             _trayIconService.UpdateStatus(_brightnessController.FormatTrayTooltip(), summary);
         };
 
+        _updateService.BackgroundCheckCompleted += (_, _) =>
+        {
+            Dispatcher.BeginInvoke(() => ScheduleIdleTrim(StartupTrimDelay));
+        };
+
         SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
@@ -114,6 +137,67 @@ public partial class App : Application
             _brightnessController.FormatTrayTooltip(),
             _brightnessController.GetTraySummaryPercent());
         _updateService.StartPeriodicChecks();
+        ScheduleIdleTrim(StartupTrimDelay);
+    }
+
+    private void EnsureThemeApplied()
+    {
+        if (_themeApplied || _themeService is null) return;
+        _themeService.ApplyToApplication(this, useDwmBackdrop: _lastDwmBackdropActive);
+        _themeApplied = true;
+    }
+
+    private FlyoutWindow GetOrCreateFlyoutWindow()
+    {
+        EnsureThemeApplied();
+
+        if (_flyoutWindow is not null)
+        {
+            return _flyoutWindow;
+        }
+
+        var flyout = new FlyoutWindow(_brightnessController!, _trayIconService!, _themeService!);
+        flyout.FlyoutShown += (_, _) => _idleTrimTimer?.Stop();
+        flyout.FlyoutHidden += (_, _) => ScheduleIdleTrim(IdleTeardownDelay);
+        _flyoutWindow = flyout;
+        return flyout;
+    }
+
+    private void ScheduleIdleTrim(TimeSpan delay)
+    {
+        if (_idleTrimTimer is null) return;
+        if (_flyoutWindow is { IsVisible: true } || _contextMenu is { IsOpen: true })
+        {
+            return;
+        }
+
+        _idleTrimTimer.Stop();
+        _idleTrimTimer.Interval = delay;
+        _idleTrimTimer.Start();
+    }
+
+    private void OnIdleTrimTimerTick(object? sender, EventArgs e)
+    {
+        _idleTrimTimer?.Stop();
+
+        if (_contextMenu is { IsOpen: true })
+        {
+            return;
+        }
+
+        if (_flyoutWindow is not null)
+        {
+            if (_flyoutWindow.IsVisible || _flyoutWindow.IsAnimating)
+            {
+                return;
+            }
+
+            _lastDwmBackdropActive = _flyoutWindow.IsDwmBackdropActive;
+            _flyoutWindow.ForceClose();
+            _flyoutWindow = null;
+        }
+
+        MemoryOptimizer.TrimMemory();
     }
 
     private async Task SafeRefreshMonitorsAsync()
@@ -142,12 +226,18 @@ public partial class App : Application
 
     private void HandleThemeChanged()
     {
-        if (_themeService is null || _trayIconService is null || _flyoutWindow is null) return;
+        if (_themeService is null || _trayIconService is null) return;
 
         var snapshot = _themeService.Refresh();
-        _themeService.ApplyToApplication(this);
         _trayIconService.UpdateTheme(snapshot.IsTaskbarDark);
-        _flyoutWindow.ApplyDwmBackdrop();
+
+        if (_themeApplied)
+        {
+            bool useBackdrop = _flyoutWindow?.IsDwmBackdropActive ?? _lastDwmBackdropActive;
+            _themeService.ApplyToApplication(this, useDwmBackdrop: useBackdrop);
+        }
+
+        _flyoutWindow?.ApplyDwmBackdrop();
         _scrollHookService?.EnsureHookInstalled();
     }
 
@@ -183,8 +273,10 @@ public partial class App : Application
 
         _updateService?.ApplyPendingUpdateOnExit();
         _updateService?.Dispose();
+        _idleTrimTimer?.Stop();
         _rescanDebounceTimer?.Stop();
         _scrollHookService?.Dispose();
+        _contextMenu?.Dispose();
         _flyoutWindow?.ForceClose();
         _trayIconService?.Dispose();
         _brightnessController?.Dispose();

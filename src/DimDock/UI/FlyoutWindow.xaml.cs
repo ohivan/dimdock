@@ -20,10 +20,18 @@ public partial class FlyoutWindow : Window
     private readonly TrayIconService _trayIconService;
     private readonly SystemThemeService _themeService;
     private readonly NativeVSyncSlideAnimator _slideAnimator;
+    private readonly EventHandler _monitorsRefreshedHandler;
     private DateTime _lastDeactivatedUtc = DateTime.MinValue;
     private bool _isClosing;
     private bool _isHidingAnimated;
     private bool _isCloaked;
+    private bool _isDwmBackdropActive = true;
+
+    public bool IsDwmBackdropActive => _isDwmBackdropActive;
+    public bool IsAnimating => _slideAnimator.IsRunning || _isWaitingWarmup || _isHidingAnimated;
+
+    public event EventHandler? FlyoutShown;
+    public event EventHandler? FlyoutHidden;
 
     // Warmup frame state before uncloaking and starting the VSync slide
     private bool _isWaitingWarmup;
@@ -55,7 +63,9 @@ public partial class FlyoutWindow : Window
             CornerRadius = new CornerRadius(0)
         });
 
-        _controller.MonitorsRefreshed += (_, _) => Dispatcher.BeginInvoke(SyncUiState);
+        _monitorsRefreshedHandler = (_, _) => Dispatcher.BeginInvoke(SyncUiState);
+        _controller.MonitorsRefreshed += _monitorsRefreshedHandler;
+        Loaded += (_, _) => ApplyDwmBackdrop();
         SyncUiState();
     }
 
@@ -80,6 +90,7 @@ public partial class FlyoutWindow : Window
     {
         StopSlideAnimation();
         _isHidingAnimated = false;
+        FlyoutShown?.Invoke(this, EventArgs.Empty);
 
         SyncUiState();
 
@@ -112,6 +123,7 @@ public partial class FlyoutWindow : Window
         if (wasHidden)
         {
             Show();
+            ApplyDwmBackdrop();
             UpdateLayout();
 
             // Recompute exact placement once real rendered ActualHeight is known.
@@ -155,6 +167,7 @@ public partial class FlyoutWindow : Window
             _isHidingAnimated = false;
             SetCloaked(new WindowInteropHelper(this).Handle, false);
             Hide();
+            FlyoutHidden?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -182,6 +195,7 @@ public partial class FlyoutWindow : Window
         {
             _isHidingAnimated = false;
             Hide();
+            FlyoutHidden?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -227,7 +241,16 @@ public partial class FlyoutWindow : Window
         NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPref, sizeof(int));
 
         int backdrop = NativeMethods.DWMSBT_TRANSIENTWINDOW;
-        NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int));
+        int hr = NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int));
+        bool supported = hr == 0;
+        if (supported != _isDwmBackdropActive)
+        {
+            _isDwmBackdropActive = supported;
+            if (Application.Current is { } app)
+            {
+                _themeService.ApplyFlyoutSurfaceBrushes(app, useDwmBackdrop: supported);
+            }
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -261,6 +284,15 @@ public partial class FlyoutWindow : Window
         StopSlideAnimation();
         _slideAnimator.Dispose();
         Close();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _controller.MonitorsRefreshed -= _monitorsRefreshedHandler;
+        MonitorsList.ItemsSource = null;
+        StopSlideAnimation();
+        _slideAnimator.Dispose();
+        base.OnClosed(e);
     }
 
     private void OnWarmupFrame(object? sender, EventArgs e)
@@ -297,12 +329,13 @@ public partial class FlyoutWindow : Window
             endYPx,
             durationMs,
             onCompleted: opening
-                ? null
+                ? (Action?)null
                 : () =>
                 {
                     _isHidingAnimated = false;
                     SetCloaked(hwnd, false);
                     Hide();
+                    FlyoutHidden?.Invoke(this, EventArgs.Empty);
                 });
     }
 
@@ -420,31 +453,6 @@ public partial class FlyoutWindow : Window
         {
             HideFlyout();
             e.Handled = true;
-        }
-    }
-
-    private void OnSliderLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Slider slider) return;
-        slider.ApplyTemplate();
-
-        // .NET 10's built-in Fluent Slider gives the 20x20 Thumb's outer Border Margin="-2" (making it 24x24).
-        // Zeroing that margin brings it to Windows 11 Quick Settings' exact 20x20 thumb diameter,
-        // and insetting TrackBackground by 2px keeps the track ends tucked cleanly behind the thumb at 0 and 100.
-        if (slider.Template.FindName("TrackBackground", slider) is Border trackBg)
-        {
-            trackBg.Margin = new Thickness(2, 0, 2, 0);
-        }
-
-        if (slider.Template.FindName("PART_Track", slider) is Track track &&
-            track.Thumb is { } thumb)
-        {
-            thumb.ApplyTemplate();
-            if (VisualTreeHelper.GetChildrenCount(thumb) > 0 &&
-                VisualTreeHelper.GetChild(thumb, 0) is Border outerBorder)
-            {
-                outerBorder.Margin = new Thickness(0);
-            }
         }
     }
 

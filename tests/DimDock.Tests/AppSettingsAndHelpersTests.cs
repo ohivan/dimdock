@@ -107,6 +107,71 @@ public sealed class AppSettingsAndHelpersTests : IDisposable
         Assert.Equal(expected, TrayScrollHookService.IsTaskbarClassName(className.AsSpan()));
     }
 
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, true)]
+    public void SystemThemeService_ComputeFlyoutPalette_UsesTranslucentLayersForDwmBackdropAndOpaqueFallback(
+        bool isDark,
+        bool useDwmBackdrop,
+        bool isTransparencyEnabled)
+    {
+        var palette = SystemThemeService.ComputeFlyoutPalette(isDark, useDwmBackdrop, isTransparencyEnabled);
+
+        if (useDwmBackdrop)
+        {
+            Assert.True(palette.BodyTint.A <= 0x80,
+                $"Expected translucent body over DWM Acrylic, got alpha {palette.BodyTint.A}");
+            Assert.True(palette.FooterTint.A > 0 && palette.FooterTint.A <= 0xA0,
+                $"Expected translucent footer over DWM Acrylic, got alpha {palette.FooterTint.A}");
+            Assert.True(palette.Divider.A > 0 && palette.Divider.A < 0xC0,
+                $"Expected translucent divider over DWM Acrylic, got alpha {palette.Divider.A}");
+        }
+        else
+        {
+            Assert.Equal(0xFF, palette.BodyTint.A);
+            Assert.Equal(0xFF, palette.FooterTint.A);
+        }
+    }
+
+    [Fact]
+    public void FluentProgressRing_ComputeArcAngles_BreathesAndRotatesWithinBounds()
+    {
+        var (start0, sweep0) = DimDock.UI.FluentProgressRing.ComputeArcAngles(0.0);
+        var (startMid, sweepMid) = DimDock.UI.FluentProgressRing.ComputeArcAngles(0.6665);
+        var (startEnd, sweepEnd) = DimDock.UI.FluentProgressRing.ComputeArcAngles(1.333);
+
+        Assert.InRange(start0, 0.0, 360.0);
+        Assert.InRange(sweep0, 17.9, 18.1);
+        Assert.True(sweepMid > 240.0 && sweepMid <= 245.1, $"Expected expanded mid-cycle arc, got {sweepMid}");
+        Assert.InRange(sweepEnd, 17.9, 18.1);
+        Assert.NotEqual(start0, startEnd);
+    }
+
+    [Fact]
+    public void DimDockAssembly_EmbedsAcrylicNoiseResource()
+    {
+        var assembly = typeof(SystemThemeService).Assembly;
+        using var stream = assembly.GetManifestResourceStream("DimDock.g.resources");
+        Assert.NotNull(stream);
+
+        using var reader = new System.Resources.ResourceReader(stream!);
+        bool found = false;
+        foreach (System.Collections.DictionaryEntry entry in reader)
+        {
+            if (string.Equals(entry.Key as string, "assets/noiseasset_256x256.png", StringComparison.OrdinalIgnoreCase))
+            {
+                found = true;
+                break;
+            }
+        }
+
+        Assert.True(found, "Expected assets/noiseasset_256x256.png to be embedded in DimDock.g.resources");
+    }
+
     [Fact]
     public void AppLogger_WritesFormattedLineAndRotatesOversizedLog()
     {

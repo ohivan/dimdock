@@ -15,7 +15,13 @@
     <Description>Lightweight Windows 11 system tray DDC/CI monitor brightness manager</Description>
     <Version>1.0.0</Version>
     <Authors>ohivan</Authors>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="9" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Assets\NoiseAsset_256x256.png" />

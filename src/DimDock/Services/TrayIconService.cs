@@ -1,8 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using DimDock.Interop;
 
 namespace DimDock.Services;
@@ -344,61 +341,79 @@ public sealed class TrayIconService : IDisposable
 
     internal static byte[] RenderSunIconPixels(bool isDarkTaskbar, int brightnessPercent, int size)
     {
-        // Render directly at the live taskbar small-icon pixel size (16px @ 100%, 20px @ 125%,
-        // 24px @ 150%, 32px @ 200%, 36px @ 225%, 48px @ 300%, ...) so Windows renders it 1:1
-        // without upscaling blur or downscaling softness.
+        // Render directly on the CPU via an anti-aliased signed distance field at the live taskbar
+        // small-icon pixel size (16px..48px) so startup never initializes WPF's MIL/WIC graphics stack.
+        // Outputs straight (non-premultiplied) BGRA32 expected by Windows 11's taskbar HICON loader.
+        const double invSqrt2 = 0.7071067811865475244;
+
         double s = size / 16.0;
         double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
 
-        Color fg = isDarkTaskbar
-            ? Color.FromRgb(0xFF, 0xFF, 0xFF)
-            : Color.FromRgb(0x1A, 0x1A, 0x1A);
+        byte fg = isDarkTaskbar ? (byte)0xFF : (byte)0x1A;
 
-        var brush = new SolidColorBrush(fg);
-        brush.Freeze();
-
-        var pen = new Pen(brush, 1.45 * s)
-        {
-            StartLineCap = PenLineCap.Flat,
-            EndLineCap = PenLineCap.Flat
-        };
-        pen.Freeze();
-
-        var visual = new DrawingVisual();
-        using (var dc = visual.RenderOpen())
-        {
-            double center = size / 2.0;
-            // Scale both the sun core and rays smoothly so rays always remain crisp visible lines
-            // (~2.6-3.0px long even at 0%) while the full sun expands from ~13.5px (0%) to edge-to-edge 16px (100%).
-            double ringRadius = (2.1 + (3.0 - 2.1) * t) * s;
-            double rayInner = (4.1 + (5.0 - 4.1) * t) * s;
-            double rayOuter = (6.7 + (8.0 - 6.7) * t) * s;
-
-            dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
-
-            for (int i = 0; i < 8; i++)
-            {
-                double angle = i * (Math.PI / 4.0);
-                double cos = Math.Cos(angle);
-                double sin = Math.Sin(angle);
-
-                var p1 = new Point(center + cos * rayInner, center + sin * rayInner);
-                var p2 = new Point(center + cos * rayOuter, center + sin * rayOuter);
-                dc.DrawLine(pen, p1, p2);
-            }
-        }
-
-        var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-        rtb.Render(visual);
-
-        // Windows 11's taskbar extracts 32bpp HICONs via WIC as straight (non-premultiplied) BGRA32.
-        // Converting from Pbgra32 avoids double-premultiplication dimming on anti-aliased edges.
-        var straightBgra = new FormatConvertedBitmap(rtb, PixelFormats.Bgra32, null, 0);
+        double center = size * 0.5;
+        double ringRadius = (2.1 + (3.0 - 2.1) * t) * s;
+        double rayInner = (4.1 + (5.0 - 4.1) * t) * s;
+        double rayOuter = (6.7 + (8.0 - 6.7) * t) * s;
+        double halfStroke = (1.45 * s) * 0.5;
+        double rayMid = (rayInner + rayOuter) * 0.5;
+        double rayHalfLen = (rayOuter - rayInner) * 0.5;
 
         int stride = size * 4;
         byte[] pixels = new byte[stride * size];
-        straightBgra.CopyPixels(pixels, stride, 0);
+
+        for (int py = 0; py < size; py++)
+        {
+            double dy = (py + 0.5) - center;
+            double absY = Math.Abs(dy);
+            int rowOffset = py * stride;
+
+            for (int px = 0; px < size; px++)
+            {
+                double dx = (px + 0.5) - center;
+                double absX = Math.Abs(dx);
+
+                // Ring SDF
+                double distFromCenter = Math.Sqrt(dx * dx + dy * dy);
+                double d = Math.Abs(distFromCenter - ringRadius) - halfStroke;
+
+                // Exploit 8-fold dihedral symmetry: map into first octant (u >= v >= 0).
+                double u = absX >= absY ? absX : absY;
+                double v = absX >= absY ? absY : absX;
+
+                // Nearest cardinal ray (+X axis in octant) with flat caps
+                double dCardinal = BoxSdf(Math.Abs(u - rayMid) - rayHalfLen, v - halfStroke);
+                if (dCardinal < d) d = dCardinal;
+
+                // Nearest diagonal ray (45 deg axis in octant) with flat caps
+                double diagProj = (u + v) * invSqrt2;
+                double diagPerp = (u - v) * invSqrt2;
+                double dDiagonal = BoxSdf(Math.Abs(diagProj - rayMid) - rayHalfLen, diagPerp - halfStroke);
+                if (dDiagonal < d) d = dDiagonal;
+
+                double coverage = Math.Clamp(0.5 - d, 0.0, 1.0);
+                if (coverage <= 0.0) continue;
+
+                byte alpha = (byte)Math.Round(coverage * 255.0);
+                if (alpha == 0) continue;
+
+                int idx = rowOffset + (px * 4);
+                pixels[idx] = fg;     // B
+                pixels[idx + 1] = fg; // G
+                pixels[idx + 2] = fg; // R
+                pixels[idx + 3] = alpha;
+            }
+        }
+
         return pixels;
+    }
+
+    private static double BoxSdf(double qx, double qy)
+    {
+        double ox = qx > 0.0 ? qx : 0.0;
+        double oy = qy > 0.0 ? qy : 0.0;
+        double inside = Math.Min(Math.Max(qx, qy), 0.0);
+        return Math.Sqrt(ox * ox + oy * oy) + inside;
     }
 
     private static IntPtr CreateHIconFromBgra32(byte[] bgraPixels, int width, int height)

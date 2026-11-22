@@ -68,6 +68,7 @@ public sealed class UpdateService : IDisposable
     }
 
     public event EventHandler? StateChanged;
+    public event EventHandler? BackgroundCheckCompleted;
 
     public void StartPeriodicChecks()
     {
@@ -185,6 +186,11 @@ public sealed class UpdateService : IDisposable
             {
                 // Ignore if disposed while unwinding.
             }
+
+            if (!IsDisposed)
+            {
+                BackgroundCheckCompleted?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 
@@ -271,21 +277,60 @@ public sealed class UpdateService : IDisposable
 
     private sealed class VelopackUpdateBackend : IUpdateBackend
     {
-        private readonly UpdateManager _manager;
+        private readonly string _repoUrl;
+        private readonly object _metaLock = new();
+        private bool _metaLoaded;
+        private bool _isInstalled;
+        private string? _currentVersion;
 
         public VelopackUpdateBackend(string repoUrl)
         {
-            var source = new GithubSource(repoUrl, accessToken: null, prerelease: false);
-            _manager = new UpdateManager(source);
+            _repoUrl = repoUrl;
         }
 
-        public bool IsInstalled => _manager.IsInstalled;
-        public string? CurrentVersion => _manager.CurrentVersion?.ToString();
+        public bool IsInstalled
+        {
+            get
+            {
+                EnsureMetadataLoaded();
+                return _isInstalled;
+            }
+        }
+
+        public string? CurrentVersion
+        {
+            get
+            {
+                EnsureMetadataLoaded();
+                return _currentVersion;
+            }
+        }
+
+        private UpdateManager CreateManager()
+        {
+            var source = new GithubSource(_repoUrl, accessToken: null, prerelease: false);
+            return new UpdateManager(source);
+        }
+
+        private void EnsureMetadataLoaded()
+        {
+            if (_metaLoaded) return;
+            lock (_metaLock)
+            {
+                if (_metaLoaded) return;
+                // Probe install status once without retaining a long-lived UpdateManager/GithubSource.
+                var manager = CreateManager();
+                _isInstalled = manager.IsInstalled;
+                _currentVersion = manager.CurrentVersion?.ToString();
+                _metaLoaded = true;
+            }
+        }
 
         public async Task<PendingUpdateHandle?> CheckForUpdatesAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
-            var info = await _manager.CheckForUpdatesAsync().ConfigureAwait(false);
+            var manager = CreateManager();
+            var info = await manager.CheckForUpdatesAsync().ConfigureAwait(false);
             return info is null
                 ? null
                 : new PendingUpdateHandle(info.TargetFullRelease.Version.ToString(), info);
@@ -294,14 +339,16 @@ public sealed class UpdateService : IDisposable
         public Task DownloadUpdatesAsync(PendingUpdateHandle update, CancellationToken ct)
         {
             if (update.NativeInfo is null) return Task.CompletedTask;
-            return _manager.DownloadUpdatesAsync(update.NativeInfo, cancelToken: ct);
+            var manager = CreateManager();
+            return manager.DownloadUpdatesAsync(update.NativeInfo, cancelToken: ct);
         }
 
         public void ApplyUpdatesAndRestart(PendingUpdateHandle update)
         {
             if (update.NativeInfo is not null)
             {
-                _manager.ApplyUpdatesAndRestart(update.NativeInfo);
+                var manager = CreateManager();
+                manager.ApplyUpdatesAndRestart(update.NativeInfo);
             }
         }
 
@@ -309,7 +356,8 @@ public sealed class UpdateService : IDisposable
         {
             if (update.NativeInfo is not null)
             {
-                _manager.WaitExitThenApplyUpdates(update.NativeInfo, silent: true, restart: false);
+                var manager = CreateManager();
+                manager.WaitExitThenApplyUpdates(update.NativeInfo, silent: true, restart: false);
             }
         }
     }

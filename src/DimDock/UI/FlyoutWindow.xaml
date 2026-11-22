@@ -28,7 +28,7 @@
                 <RowDefinition Height="48" />
             </Grid.RowDefinitions>
 
-            <!-- Main Body (#2C2C2C dark + 2% Acrylic noise) -->
+            <!-- Main Body (WinUI 3 AcrylicBackgroundFillColorDefault: DWM Acrylic + subtle tint + 2% noise) -->
             <Grid Grid.Row="0"
                   Background="{DynamicResource DimFlyoutTintBrush}">
                 <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"
@@ -68,7 +68,7 @@
                                                        MaxWidth="270" />
                                         </StackPanel>
 
-                                        <!-- Built-in .NET 10 Fluent Slider + Numeric Readout -->
+                                        <!-- Lightweight Fluent Slider + Numeric Readout -->
                                         <Grid Grid.Row="1">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -83,7 +83,6 @@
                                                     IsMoveToPointEnabled="True"
                                                     VerticalAlignment="Center"
                                                     Value="{Binding Brightness, Mode=OneWay}"
-                                                    Loaded="OnSliderLoaded"
                                                     PreviewMouseLeftButtonDown="OnSliderPreviewMouseLeftButtonDown"
                                                     ValueChanged="OnSliderValueChanged" />
 
@@ -132,11 +131,11 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- 1px Divider (#1D1D1D dark) -->
+            <!-- 1px Translucent Divider -->
             <Border Grid.Row="1"
                     Background="{DynamicResource DimDividerBrush}" />
 
-            <!-- 48px Footer (#202020 dark + 2% Acrylic noise; 1px + 48px = 49px matching Quick Settings) -->
+            <!-- 48px Footer (WinUI 3 AcrylicBackgroundFillColorBase + 2% noise; 1px + 48px = 49px matching Quick Settings) -->
             <Grid Grid.Row="2"
                   Background="{DynamicResource DimFooterTintBrush}">
                 <Rectangle Fill="{DynamicResource DimAcrylicNoiseBrush}"

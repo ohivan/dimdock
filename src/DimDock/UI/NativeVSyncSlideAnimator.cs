@@ -40,6 +40,25 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
         double durationMs,
         Action? onCompleted = null)
     {
+        Start(
+            hwnd,
+            opening ? EvaluateOpenEase : EvaluateCloseEase,
+            xPx,
+            startYPx,
+            endYPx,
+            durationMs,
+            onCompleted);
+    }
+
+    public void Start(
+        IntPtr hwnd,
+        Func<double, double> easeEvaluator,
+        int xPx,
+        int startYPx,
+        int endYPx,
+        double durationMs,
+        Action? onCompleted = null)
+    {
         CancellationTokenSource cts;
         CancellationToken ct;
 
@@ -55,6 +74,7 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
 
         // Run a dedicated DwmFlush() loop so movement locks to the monitor's true native refresh rate
         // (e.g. 240Hz / 144Hz / 60Hz) instead of WPF's 60fps CompositionTarget cap.
+        // Cap stack size to 128 KB (instead of the default 1 MB) for this tiny animation loop.
         var thread = new Thread(() =>
         {
             try
@@ -72,14 +92,8 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
                     if (ct.IsCancellationRequested) break;
 
                     double elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
-                    double t = Math.Clamp(elapsedMs / durationMs, 0.0, 1.0);
-
-                    // Official Windows 11 Fluent 2 Control Center curves:
-                    // Open:  cubic-bezier(0.1, 0.9, 0.2, 1.0) — explosive start, long smooth settle
-                    // Close: cubic-bezier(0.7, 0.0, 1.0, 0.5) — gentle pull-off, fast whip into taskbar
-                    double eased = opening
-                        ? EvaluateOpenEase(t)
-                        : EvaluateCloseEase(t);
+                    double t = durationMs <= 0.0 ? 1.0 : Math.Clamp(elapsedMs / durationMs, 0.0, 1.0);
+                    double eased = easeEvaluator(t);
 
                     int currentY = (int)Math.Round(startYPx + (endYPx - startYPx) * eased);
                     if (currentY != lastY)
@@ -126,7 +140,7 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
                 }
                 cts.Dispose();
             }
-        })
+        }, maxStackSize: 128 * 1024)
         {
             IsBackground = true,
             Priority = ThreadPriority.AboveNormal,
@@ -163,9 +177,15 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
         }
     }
 
+    // Official Windows 11 Fluent 2 Control Center curves:
+    // Open:  cubic-bezier(0.1, 0.9, 0.2, 1.0) — explosive start, long smooth settle
+    // Close: cubic-bezier(0.7, 0.0, 1.0, 0.5) — gentle pull-off, fast whip into taskbar
+    // Menu:  cubic-bezier(0.33, 1.0, 0.68, 1.0) — crisp cubic ease-out for short context menu rises
     internal static double EvaluateOpenEase(double t) => EvaluateCubicBezier(t, 0.1, 0.9, 0.2, 1.0);
 
     internal static double EvaluateCloseEase(double t) => EvaluateCubicBezier(t, 0.7, 0.0, 1.0, 0.5);
+
+    internal static double EvaluateMenuOpenEase(double t) => EvaluateCubicBezier(t, 0.33, 1.0, 0.68, 1.0);
 
     internal static double EvaluateCubicBezier(double x, double x1, double y1, double x2, double y2)
     {
