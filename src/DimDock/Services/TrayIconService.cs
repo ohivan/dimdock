@@ -223,33 +223,26 @@ public sealed class TrayIconService : IDisposable
         double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
 
         Color fg = isDarkTaskbar
-            ? Color.FromRgb(0xF5, 0xF5, 0xF5)
-            : Color.FromRgb(0x1E, 0x1E, 0x1E);
+            ? Color.FromRgb(0xFF, 0xFF, 0xFF)
+            : Color.FromRgb(0x1A, 0x1A, 0x1A);
 
-        var ringPen = new Pen(new SolidColorBrush(fg), 2.3)
+        var pen = new Pen(new SolidColorBrush(fg), 2.7)
         {
             StartLineCap = PenLineCap.Round,
             EndLineCap = PenLineCap.Round
         };
-        ringPen.Freeze();
-
-        var rayPen = new Pen(new SolidColorBrush(fg), 2.3)
-        {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap = PenLineCap.Round
-        };
-        rayPen.Freeze();
+        pen.Freeze();
 
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             const double center = size / 2.0;
-            const double ringRadius = 4.6;
-            const double rayInner = 8.6;
-            // At 0%, rays are crisp dot-ticks (8.8px); at 100%, full radiant sun rays (14.2px).
-            double rayOuter = 8.8 + (14.2 - 8.8) * t;
+            const double ringRadius = 5.4;
+            const double rayInner = 9.4;
+            // At 0%, crisp dot-ticks (9.8px); at 100%, full radiant sun rays (14.6px) filling the 32x32 frame cleanly.
+            double rayOuter = 9.8 + (14.6 - 9.8) * t;
 
-            dc.DrawEllipse(null, ringPen, new Point(center, center), ringRadius, ringRadius);
+            dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
 
             for (int i = 0; i < 8; i++)
             {
@@ -259,7 +252,7 @@ public sealed class TrayIconService : IDisposable
 
                 var p1 = new Point(center + cos * rayInner, center + sin * rayInner);
                 var p2 = new Point(center + cos * rayOuter, center + sin * rayOuter);
-                dc.DrawLine(rayPen, p1, p2);
+                dc.DrawLine(pen, p1, p2);
             }
         }
 
