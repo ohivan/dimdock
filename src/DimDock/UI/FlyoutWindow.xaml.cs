@@ -24,10 +24,12 @@ public partial class FlyoutWindow : Window
     private DateTime _lastDeactivatedUtc = DateTime.MinValue;
     private bool _isClosing;
     private bool _isHidingAnimated;
+    private bool _isCloaked;
 
     // Active VSync slide animation state
     private bool _isAnimating;
     private bool _animatingOpen;
+    private int _warmupFramesRemaining;
     private long _animStartTicks;
     private double _animDurationMs;
     private int _animX;
@@ -83,9 +85,18 @@ public partial class FlyoutWindow : Window
         _isHidingAnimated = false;
 
         SyncUiState();
+
+        // Ensure HWND exists so we can cloak it BEFORE Show() — preventing DWM from ever flashing
+        // a raw unrendered gray Acrylic rectangle before WPF's render thread presents frame 1.
+        IntPtr hwnd = new WindowInteropHelper(this).EnsureHandle();
         ApplyDwmBackdrop();
 
-        // Pre-measure height so even the first open starts cleanly below the taskbar edge.
+        bool wasHidden = !IsVisible;
+        if (wasHidden)
+        {
+            SetCloaked(hwnd, true);
+        }
+
         if (ActualHeight <= 0)
         {
             Measure(new Size(Width, 600));
@@ -98,12 +109,11 @@ public partial class FlyoutWindow : Window
             ? placement.TargetYPx - placement.SlideDistancePx
             : placement.TargetYPx + placement.SlideDistancePx;
 
-        // Place at starting position before showing so there is zero frame flash at the final spot.
         Opacity = 1.0;
         Left = placement.TargetXPx / placement.Scale;
         Top = startY / placement.Scale;
 
-        if (!IsVisible)
+        if (wasHidden)
         {
             Show();
             UpdateLayout();
@@ -115,30 +125,33 @@ public partial class FlyoutWindow : Window
                 : placement.TargetYPx + placement.SlideDistancePx;
         }
 
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
         NativeMethods.SetForegroundWindow(hwnd);
         Activate();
 
         // Keep window directly behind Shell_TrayWnd in topmost Z-order so it slides out from behind the taskbar.
         PositionWindowNative(hwnd, taskbarHwnd, placement.TargetXPx, startY);
 
+        // If the window was just shown from hidden, wait 2 render frames while cloaked so WPF finishes
+        // presenting its painted surface before uncloaking and starting the slide.
         StartSlideAnimation(
             opening: true,
             xPx: placement.TargetXPx,
             startYPx: startY,
             endYPx: placement.TargetYPx,
             durationMs: OpenDurationMs,
-            insertAfter: taskbarHwnd);
+            insertAfter: taskbarHwnd,
+            warmupFrames: wasHidden ? 2 : 0);
     }
 
     public void HideFlyout(bool immediate = false)
     {
         if (!IsVisible) return;
 
-        if (immediate)
+        if (immediate || _isCloaked)
         {
             StopSlideAnimation();
             _isHidingAnimated = false;
+            SetCloaked(new WindowInteropHelper(this).Handle, false);
             Hide();
             return;
         }
@@ -247,7 +260,8 @@ public partial class FlyoutWindow : Window
         int startYPx,
         int endYPx,
         double durationMs,
-        IntPtr insertAfter)
+        IntPtr insertAfter,
+        int warmupFrames = 0)
     {
         _animatingOpen = opening;
         _animX = xPx;
@@ -255,6 +269,7 @@ public partial class FlyoutWindow : Window
         _animEndY = endYPx;
         _animDurationMs = durationMs;
         _animInsertAfter = insertAfter;
+        _warmupFramesRemaining = warmupFrames;
         _animStartTicks = Stopwatch.GetTimestamp();
 
         if (!_isAnimating)
@@ -269,6 +284,7 @@ public partial class FlyoutWindow : Window
         if (_isAnimating)
         {
             _isAnimating = false;
+            _warmupFramesRemaining = 0;
             CompositionTarget.Rendering -= OnAnimationFrame;
         }
     }
@@ -276,6 +292,24 @@ public partial class FlyoutWindow : Window
     private void OnAnimationFrame(object? sender, EventArgs e)
     {
         if (!_isAnimating) return;
+
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+
+        // Wait for WPF's render thread to present the first painted frame before uncloaking.
+        if (_warmupFramesRemaining > 0)
+        {
+            _warmupFramesRemaining--;
+            if (_warmupFramesRemaining == 0)
+            {
+                if (hwnd != IntPtr.Zero)
+                {
+                    PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
+                    SetCloaked(hwnd, false);
+                }
+                _animStartTicks = Stopwatch.GetTimestamp();
+            }
+            return;
+        }
 
         double elapsedMs = (Stopwatch.GetTimestamp() - _animStartTicks) * 1000.0 / Stopwatch.Frequency;
         double t = Math.Clamp(elapsedMs / _animDurationMs, 0.0, 1.0);
@@ -286,7 +320,6 @@ public partial class FlyoutWindow : Window
             : t * t * t;
 
         int currentY = (int)Math.Round(_animStartY + (_animEndY - _animStartY) * eased);
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
             PositionWindowNative(hwnd, _animInsertAfter, _animX, currentY);
@@ -298,9 +331,21 @@ public partial class FlyoutWindow : Window
             if (!_animatingOpen)
             {
                 _isHidingAnimated = false;
+                if (hwnd != IntPtr.Zero)
+                {
+                    SetCloaked(hwnd, false);
+                }
                 Hide();
             }
         }
+    }
+
+    private void SetCloaked(IntPtr hwnd, bool cloaked)
+    {
+        _isCloaked = cloaked;
+        if (hwnd == IntPtr.Zero) return;
+        int value = cloaked ? 1 : 0;
+        NativeMethods.DwmSetWindowAttribute(hwnd, NativeMethods.DWMWA_CLOAK, ref value, sizeof(int));
     }
 
     private static void PositionWindowNative(IntPtr hwnd, IntPtr insertAfter, int xPx, int yPx)

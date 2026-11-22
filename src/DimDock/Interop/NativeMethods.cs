@@ -38,6 +38,7 @@ internal static class NativeMethods
     public const int WS_EX_NOACTIVATE = 0x08000000;
 
     // DWM attributes
+    public const int DWMWA_CLOAK = 13;
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
