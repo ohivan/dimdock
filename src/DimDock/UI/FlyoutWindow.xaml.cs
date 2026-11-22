@@ -125,6 +125,11 @@ public partial class FlyoutWindow : Window
                 : placement.TargetYPx + placement.SlideDistancePx;
         }
 
+        if (placement.IsInOverflow)
+        {
+            DismissTrayOverflowWindow();
+        }
+
         NativeMethods.SetForegroundWindow(hwnd);
         Activate();
 
@@ -305,6 +310,10 @@ public partial class FlyoutWindow : Window
                 {
                     PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
                     SetCloaked(hwnd, false);
+                    // Re-assert foreground once uncloaked so Windows Shell sees the focus transfer
+                    // (which cleanly dismisses the tray overflow popup and ensures Deactivated fires).
+                    NativeMethods.SetForegroundWindow(hwnd);
+                    PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
                 }
                 _animStartTicks = Stopwatch.GetTimestamp();
             }
@@ -365,12 +374,27 @@ public partial class FlyoutWindow : Window
         return NativeMethods.FindWindowW("Shell_TrayWnd", null);
     }
 
+    private static void DismissTrayOverflowWindow()
+    {
+        string[] overflowClasses = ["TopLevelWindowForOverflowXamlIsland", "NotifyIconOverflowWindow"];
+        foreach (string className in overflowClasses)
+        {
+            IntPtr overflowHwnd = NativeMethods.FindWindowW(className, null);
+            if (overflowHwnd != IntPtr.Zero && NativeMethods.IsWindowVisible(overflowHwnd))
+            {
+                NativeMethods.PostMessageW(overflowHwnd, NativeMethods.WM_KEYDOWN, (IntPtr)NativeMethods.VK_ESCAPE, IntPtr.Zero);
+                NativeMethods.PostMessageW(overflowHwnd, NativeMethods.WM_KEYUP, (IntPtr)NativeMethods.VK_ESCAPE, IntPtr.Zero);
+            }
+        }
+    }
+
     private readonly record struct FlyoutPlacement(
         int TargetXPx,
         int TargetYPx,
         int SlideDistancePx,
         double Scale,
-        bool IsTaskbarAtTop);
+        bool IsTaskbarAtTop,
+        bool IsInOverflow);
 
     private FlyoutPlacement ComputePlacement()
     {
@@ -402,7 +426,7 @@ public partial class FlyoutWindow : Window
         var mi = new MONITORINFOEX { cbSize = (uint)Marshal.SizeOf<MONITORINFOEX>() };
         if (!NativeMethods.GetMonitorInfoW(hMonitor, ref mi))
         {
-            return new FlyoutPlacement(0, 0, 52, 1.0, false);
+            return new FlyoutPlacement(0, 0, 52, 1.0, false, false);
         }
 
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
@@ -418,13 +442,8 @@ public partial class FlyoutWindow : Window
         double h = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 145);
         const double margin = 12.0;
 
-        double targetLeft = hasTrayRect
-            ? (anchorPx.X / scale) - (w / 2.0)
-            : workRight - w - margin;
-
-        targetLeft = Math.Clamp(targetLeft, workLeft + margin, Math.Max(workLeft + margin, workRight - w - margin));
-
         bool isTaskbarAtTop = false;
+        bool isInOverflow = false;
         double targetTop = workBottom - h - margin;
 
         if (hasTrayRect)
@@ -443,9 +462,18 @@ public partial class FlyoutWindow : Window
             }
             else
             {
-                targetTop = Math.Clamp(trayTopDip - h - margin, workTop + margin, workBottom - h - margin);
+                // Icon is inside the Windows 11 tray overflow dock:
+                // anchor cleanly in the bottom-right corner above the taskbar (like Quick Settings).
+                isInOverflow = true;
+                targetTop = workBottom - h - margin;
             }
         }
+
+        double targetLeft = (!hasTrayRect || isInOverflow)
+            ? workRight - w - margin
+            : (anchorPx.X / scale) - (w / 2.0);
+
+        targetLeft = Math.Clamp(targetLeft, workLeft + margin, Math.Max(workLeft + margin, workRight - w - margin));
 
         int targetYPx = (int)Math.Round(targetTop * scale);
         int slideDistancePx;
@@ -476,7 +504,8 @@ public partial class FlyoutWindow : Window
             TargetYPx: targetYPx,
             SlideDistancePx: slideDistancePx,
             Scale: scale,
-            IsTaskbarAtTop: isTaskbarAtTop);
+            IsTaskbarAtTop: isTaskbarAtTop,
+            IsInOverflow: isInOverflow);
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)

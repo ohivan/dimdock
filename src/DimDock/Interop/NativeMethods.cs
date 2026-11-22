@@ -9,7 +9,10 @@ internal static class NativeMethods
     public const int WM_APP = 0x8000;
     public const int WM_SETTINGCHANGE = 0x001A;
     public const int WM_CONTEXTMENU = 0x007B;
+    public const int WM_KEYDOWN = 0x0100;
+    public const int WM_KEYUP = 0x0101;
     public const int WM_MOUSEWHEEL = 0x020A;
+    public const int VK_ESCAPE = 0x1B;
     public const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
     public const int NIN_SELECT = 0x0400;
     public const int NIN_KEYSELECT = 0x0401;
@@ -160,6 +163,10 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr FindWindowW(string? lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
