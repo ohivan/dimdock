@@ -137,7 +137,7 @@ public sealed class TrayIconService : IDisposable
     }
 
     private static int QuantizeBucket(int percent) =>
-        Math.Clamp((int)Math.Round(percent / 10.0) * 10, 0, 100);
+        Math.Clamp((int)Math.Round(percent / 5.0, MidpointRounding.AwayFromZero) * 5, 0, 100);
 
     private IntPtr GetOrCreateIcon(int bucket)
     {
@@ -240,11 +240,11 @@ public sealed class TrayIconService : IDisposable
         using (var dc = visual.RenderOpen())
         {
             double center = size / 2.0;
-            // Scale both the sun core and rays together so rays always remain crisp visible lines
-            // (~2.8-3.0px long even at 0%) while the full sun expands from ~13.5px (0%) to edge-to-edge 16px (100%).
-            double ringRadius = (1.8 + (3.1 - 1.8) * t) * s;
-            double rayInner = (3.8 + (5.0 - 3.8) * t) * s;
-            double rayOuter = (6.6 + (8.0 - 6.6) * t) * s;
+            // Scale both the sun core and rays smoothly so rays always remain crisp visible lines
+            // (~2.6-3.0px long even at 0%) while the full sun expands from ~13.5px (0%) to edge-to-edge 16px (100%).
+            double ringRadius = (2.1 + (3.0 - 2.1) * t) * s;
+            double rayInner = (4.1 + (5.0 - 4.1) * t) * s;
+            double rayOuter = (6.7 + (8.0 - 6.7) * t) * s;
 
             dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
 
