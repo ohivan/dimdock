@@ -145,8 +145,10 @@ public sealed class BrightnessController : IDisposable
 
     public string FormatTrayTooltip()
     {
-        int? summary = GetTraySummaryPercent();
-        return summary.HasValue ? $"DimDock ({summary.Value}%)" : "DimDock";
+        var targets = ResolveTrayTargets();
+        if (targets.Count == 0) return "DimDock";
+
+        return string.Join(Environment.NewLine, targets.Select(m => $"{m.DisplayName}: {m.Brightness}%"));
     }
 
     public void SetLinkMonitors(bool linked)

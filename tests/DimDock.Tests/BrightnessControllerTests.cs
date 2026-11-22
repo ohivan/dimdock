@@ -36,7 +36,9 @@ public sealed class BrightnessControllerTests : IDisposable
         Assert.Equal(100, controller.Monitors[1].Brightness);
         Assert.Equal(44, controller.Monitors[2].Brightness);
         Assert.Equal(64, summary); // round((47+100+44)/3 = 63.67)
-        Assert.Equal("DimDock (64%)", controller.FormatTrayTooltip());
+        Assert.Equal(
+            $"LG HDR 4K: 47%{Environment.NewLine}XB270HU: 100%{Environment.NewLine}DELL U2415: 44%",
+            controller.FormatTrayTooltip());
 
         Assert.Equal(47, backend.LastWritten["m1"]);
         Assert.Equal(100, backend.LastWritten["m2"]);
@@ -80,6 +82,7 @@ public sealed class BrightnessControllerTests : IDisposable
         Assert.Equal(40, controller.Monitors[0].Brightness);
         Assert.Equal(60, controller.Monitors[1].Brightness);
         Assert.Equal(60, summary);
+        Assert.Equal("DELL U2415: 60%", controller.FormatTrayTooltip());
         Assert.False(backend.LastWritten.ContainsKey("m1"));
         Assert.Equal(60, backend.LastWritten["m2"]);
     }
