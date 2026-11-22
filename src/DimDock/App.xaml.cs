@@ -13,11 +13,13 @@ public partial class App : Application
     private const string ActivateMessageName = "DimDock_ActivateExistingInstance";
 
     private Mutex? _singleInstanceMutex;
+    private bool _ownsSingleInstanceMutex;
     private uint _activateMessage;
 
     private SystemThemeService? _themeService;
     private SettingsService? _settingsService;
     private StartupService? _startupService;
+    private UpdateService? _updateService;
     private DdcMonitorBackend? _monitorBackend;
     private BrightnessController? _brightnessController;
     private TrayIconService? _trayIconService;
@@ -34,6 +36,7 @@ public partial class App : Application
 
         bool createdNew;
         _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out createdNew);
+        _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
             // Signal the running instance to toggle/show its flyout, then exit cleanly.
@@ -50,6 +53,7 @@ public partial class App : Application
 
         _settingsService = new SettingsService();
         _startupService = new StartupService();
+        _updateService = new UpdateService();
         _monitorBackend = new DdcMonitorBackend();
         _brightnessController = new BrightnessController(
             _monitorBackend,
@@ -63,6 +67,7 @@ public partial class App : Application
         _contextMenu = new TrayContextMenu(
             _brightnessController,
             _startupService,
+            _updateService,
             _trayIconService,
             onRefresh: () => _ = _brightnessController.RefreshMonitorsAsync(),
             onLinkChanged: () => _flyoutWindow.SyncUiState(),
@@ -107,6 +112,7 @@ public partial class App : Application
         _trayIconService.UpdateStatus(
             _brightnessController.FormatTrayTooltip(),
             _brightnessController.GetTraySummaryPercent());
+        _updateService.StartPeriodicChecks();
     }
 
     private void HandleThemeChanged()
@@ -146,6 +152,8 @@ public partial class App : Application
         SystemEvents.DisplaySettingsChanged -= OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 
+        _updateService?.ApplyPendingUpdateOnExit();
+        _updateService?.Dispose();
         _rescanDebounceTimer?.Stop();
         _scrollHookService?.Dispose();
         _flyoutWindow?.ForceClose();
@@ -153,13 +161,17 @@ public partial class App : Application
         _brightnessController?.Dispose();
         _monitorBackend?.Dispose();
 
-        try
+        if (_ownsSingleInstanceMutex)
         {
-            _singleInstanceMutex?.ReleaseMutex();
-        }
-        catch (ApplicationException)
-        {
-            // Mutex was not owned by this instance.
+            try
+            {
+                _singleInstanceMutex?.ReleaseMutex();
+            }
+            catch (ApplicationException)
+            {
+                // Mutex was not owned by this instance.
+            }
+            _ownsSingleInstanceMutex = false;
         }
         _singleInstanceMutex?.Dispose();
 

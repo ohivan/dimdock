@@ -1,0 +1,108 @@
+name: Release DimDock
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without leading v (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release-win-x64:
+    name: Build, Test & Pack (win-x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve Version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $ver = "${{ inputs.version }}".TrimStart('v')
+          } else {
+            $ver = "${{ github.ref_name }}".TrimStart('v')
+          }
+          "VERSION=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Releasing DimDock v$ver"
+
+      - name: Run Unit Tests
+        run: dotnet test DimDock.slnx -c Release
+
+      - name: Publish Self-Contained (win-x64)
+        run: |
+          dotnet publish src/DimDock/DimDock.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:Version=${{ steps.version.outputs.VERSION }} `
+            -o publish-output
+
+      - name: Install Velopack CLI (vpk)
+        run: dotnet tool install -g vpk
+
+      - name: Download Previous Release (for Delta Packages)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          vpk download github `
+            --repoUrl "${{ github.server_url }}/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --outputDir Releases
+
+      - name: Pack Velopack Setup & Delta Packages
+        shell: pwsh
+        run: |
+          $args = @(
+            'pack',
+            '-u', 'DimDock',
+            '-v', '${{ steps.version.outputs.VERSION }}',
+            '-p', 'publish-output',
+            '--mainExe', 'DimDock.exe',
+            '--packTitle', 'DimDock',
+            '--packAuthors', 'ohivan',
+            '--outputDir', 'Releases'
+          )
+          if (Test-Path 'src/DimDock/Assets/DimDock.ico') {
+            $args += @('--icon', 'src/DimDock/Assets/DimDock.ico')
+          }
+          & vpk @args
+
+      - name: Upload to GitHub Releases
+        shell: pwsh
+        run: |
+          vpk upload github `
+            --repoUrl "${{ github.server_url }}/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --outputDir Releases `
+            --tag "v${{ steps.version.outputs.VERSION }}" `
+            --releaseName "DimDock v${{ steps.version.outputs.VERSION }}" `
+            --publish
+
+      - name: Submit WinGet Manifest Update (when WINGET_PAT is configured)
+        if: ${{ secrets.WINGET_PAT != '' }}
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
+        run: |
+          winget install Microsoft.WinGet.Create --accept-package-agreements --accept-source-agreements --disable-interactivity
+          wingetcreate update `
+            --id ohivan.DimDock `
+            --version "${{ steps.version.outputs.VERSION }}" `
+            --urls "${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/DimDock-win-Setup.exe" `
+            --submit
