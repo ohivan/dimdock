@@ -219,28 +219,31 @@ public sealed class TrayIconService : IDisposable
 
     private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent)
     {
-        const int size = 32;
+        // Render directly at the OS small-icon pixel size (16px @ 100%, 20px @ 125%, 24px @ 150%, 32px @ 200%)
+        // so Windows doesn't soften the glyph with downscale filtering.
+        int size = Math.Clamp(NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSMICON), 16, 64);
+        double s = size / 16.0;
         double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
 
         Color fg = isDarkTaskbar
             ? Color.FromRgb(0xFF, 0xFF, 0xFF)
             : Color.FromRgb(0x1A, 0x1A, 0x1A);
 
-        var pen = new Pen(new SolidColorBrush(fg), 2.7)
+        var pen = new Pen(new SolidColorBrush(fg), 1.5 * s)
         {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap = PenLineCap.Round
+            StartLineCap = PenLineCap.Flat,
+            EndLineCap = PenLineCap.Flat
         };
         pen.Freeze();
 
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            const double center = size / 2.0;
-            const double ringRadius = 5.4;
-            const double rayInner = 9.4;
-            // At 0%, crisp dot-ticks (9.8px); at 100%, full radiant sun rays (14.6px) filling the 32x32 frame cleanly.
-            double rayOuter = 9.8 + (14.6 - 9.8) * t;
+            double center = size / 2.0;
+            double ringRadius = 2.75 * s;
+            double rayInner = 4.8 * s;
+            // 0% shows clearly visible short rays (~12.4px span); 100% fills the full 16px frame edge-to-edge (~15.8px).
+            double rayOuter = (6.2 + (7.9 - 6.2) * t) * s;
 
             dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
 

@@ -60,6 +60,9 @@ internal static class NativeMethods
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
 
+    // System metrics
+    public const int SM_CXSMICON = 49;
+
     // Ancestor / Window
     public const uint GA_ROOT = 2;
     public const uint BI_RGB = 0;
@@ -194,6 +197,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern IntPtr CreateIconIndirect(ref ICONINFO piconinfo);
