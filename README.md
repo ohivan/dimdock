@@ -25,7 +25,7 @@ Windows 11 system tray utility for controlling external monitor brightness over 
 - **Hardware DDC/CI**: Controls the monitor's actual backlight rather than applying a software overlay, with throttled writes and automatic wake/display rescanning.
 - **Taskbar controls**: Left-click the tray icon for the Fluent Acrylic flyout, right-click for settings, or scroll directly over the icon in 1%, 2%, 5%, or 10% steps.
 - **Multi-monitor**: Adjust monitors independently or link them together, with configurable tray scroll targets.
-- **Native Windows 11**: Matches system theme and accent color, uses a DPI-aware sun icon that reflects brightness, and ships as a single NativeAOT Win32/Direct2D executable (zero .NET runtime dependency, minimal RAM footprint, zero telemetry).
+- **Native Windows 11**: Matches system theme and accent color, uses a DPI-aware sun icon that reflects brightness, and ships as a single NativeAOT Win32/Direct2D executable (~7.6 MB binary, ~6 MB idle RAM, ~13.3 MB installer, zero .NET runtime dependency, zero telemetry).
 - **Startup & updates**: Optional *Start with Windows* toggle and automatic updates via Velopack.
 
 ## Install
@@ -36,7 +36,7 @@ Requires Windows 11 (x64) and external monitor(s) with **DDC/CI** enabled in the
 winget install ohivan.DimDock
 ```
 
-Or download `DimDock-win-Setup.exe` from [GitHub Releases](https://github.com/ohivan/dimdock/releases/latest).
+Or download `DimDock-win-Setup.exe` (~13.3 MB) or `DimDock-win-Portable.zip` (~5.9 MB) from [GitHub Releases](https://github.com/ohivan/dimdock/releases/latest).
 
 ## Development
 
