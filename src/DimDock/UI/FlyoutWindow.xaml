@@ -19,11 +19,7 @@
 
     <Border x:Name="RootSurface"
             Background="Transparent"
-            BorderThickness="0"
-            RenderTransformOrigin="0.5,1">
-        <Border.RenderTransform>
-            <TranslateTransform x:Name="SlideTransform" Y="0" />
-        </Border.RenderTransform>
+            BorderThickness="0">
 
         <Grid>
             <Grid.RowDefinitions>

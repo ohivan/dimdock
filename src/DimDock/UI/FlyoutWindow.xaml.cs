@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -5,7 +6,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Shell;
 using DimDock.Interop;
 using DimDock.Models;
@@ -15,11 +15,25 @@ namespace DimDock.UI;
 
 public partial class FlyoutWindow : Window
 {
+    private const double OpenDurationMs = 230.0;
+    private const double CloseDurationMs = 150.0;
+
     private readonly BrightnessController _controller;
     private readonly TrayIconService _trayIconService;
     private readonly SystemThemeService _themeService;
     private DateTime _lastDeactivatedUtc = DateTime.MinValue;
     private bool _isClosing;
+    private bool _isHidingAnimated;
+
+    // Active VSync slide animation state
+    private bool _isAnimating;
+    private bool _animatingOpen;
+    private long _animStartTicks;
+    private double _animDurationMs;
+    private int _animX;
+    private int _animStartY;
+    private int _animEndY;
+    private IntPtr _animInsertAfter;
 
     public FlyoutWindow(
         BrightnessController controller,
@@ -48,7 +62,7 @@ public partial class FlyoutWindow : Window
 
     public void ToggleFromTray()
     {
-        if (IsVisible)
+        if (IsVisible && !_isHidingAnimated)
         {
             HideFlyout();
             return;
@@ -65,34 +79,89 @@ public partial class FlyoutWindow : Window
 
     public void ShowFlyout()
     {
+        StopSlideAnimation();
+        _isHidingAnimated = false;
+
         SyncUiState();
         ApplyDwmBackdrop();
 
-        // Measure desired size before positioning.
-        Opacity = 0;
-        Show();
-        UpdateLayout();
-        PositionAboveTray();
+        // Pre-measure height so even the first open starts cleanly below the taskbar edge.
+        if (ActualHeight <= 0)
+        {
+            Measure(new Size(Width, 600));
+        }
 
-        // Smooth Windows 11 flyout entrance animation.
-        SlideTransform.Y = 12;
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var placement = ComputePlacement();
+        IntPtr taskbarHwnd = FindTaskbarWindow(placement.IsTaskbarAtTop);
 
-        var slideAnim = new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease };
-        var fadeAnim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)) { EasingFunction = ease };
+        int startY = placement.IsTaskbarAtTop
+            ? placement.TargetYPx - placement.SlideDistancePx
+            : placement.TargetYPx + placement.SlideDistancePx;
 
-        SlideTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
-        BeginAnimation(OpacityProperty, fadeAnim);
+        // Place at starting position before showing so there is zero frame flash at the final spot.
+        Opacity = 1.0;
+        Left = placement.TargetXPx / placement.Scale;
+        Top = startY / placement.Scale;
+
+        if (!IsVisible)
+        {
+            Show();
+            UpdateLayout();
+
+            // Recompute exact placement once real rendered ActualHeight is known.
+            placement = ComputePlacement();
+            startY = placement.IsTaskbarAtTop
+                ? placement.TargetYPx - placement.SlideDistancePx
+                : placement.TargetYPx + placement.SlideDistancePx;
+        }
 
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         NativeMethods.SetForegroundWindow(hwnd);
         Activate();
+
+        // Keep window directly behind Shell_TrayWnd in topmost Z-order so it slides out from behind the taskbar.
+        PositionWindowNative(hwnd, taskbarHwnd, placement.TargetXPx, startY);
+
+        StartSlideAnimation(
+            opening: true,
+            xPx: placement.TargetXPx,
+            startYPx: startY,
+            endYPx: placement.TargetYPx,
+            durationMs: OpenDurationMs,
+            insertAfter: taskbarHwnd);
     }
 
-    public void HideFlyout()
+    public void HideFlyout(bool immediate = false)
     {
         if (!IsVisible) return;
-        Hide();
+
+        if (immediate)
+        {
+            StopSlideAnimation();
+            _isHidingAnimated = false;
+            Hide();
+            return;
+        }
+
+        if (_isHidingAnimated) return;
+
+        StopSlideAnimation();
+        _isHidingAnimated = true;
+
+        var placement = ComputePlacement();
+        IntPtr taskbarHwnd = FindTaskbarWindow(placement.IsTaskbarAtTop);
+        int currentYPx = (int)Math.Round(Top * placement.Scale);
+        int endYPx = placement.IsTaskbarAtTop
+            ? placement.TargetYPx - placement.SlideDistancePx
+            : placement.TargetYPx + placement.SlideDistancePx;
+
+        StartSlideAnimation(
+            opening: false,
+            xPx: placement.TargetXPx,
+            startYPx: currentYPx,
+            endYPx: endYPx,
+            durationMs: CloseDurationMs,
+            insertAfter: taskbarHwnd);
     }
 
     public void SyncUiState()
@@ -107,10 +176,12 @@ public partial class FlyoutWindow : Window
             ? "Monitors linked (click to unlink)"
             : "Link all monitors";
 
-        if (IsVisible)
+        if (IsVisible && !_isAnimating && !_isHidingAnimated)
         {
             UpdateLayout();
-            PositionAboveTray();
+            var placement = ComputePlacement();
+            Left = placement.TargetXPx / placement.Scale;
+            Top = placement.TargetYPx / placement.Scale;
         }
     }
 
@@ -155,20 +226,108 @@ public partial class FlyoutWindow : Window
         if (!_isClosing)
         {
             e.Cancel = true;
-            HideFlyout();
+            HideFlyout(immediate: true);
             return;
         }
 
+        StopSlideAnimation();
         base.OnClosing(e);
     }
 
     public void ForceClose()
     {
         _isClosing = true;
+        StopSlideAnimation();
         Close();
     }
 
-    private void PositionAboveTray()
+    private void StartSlideAnimation(
+        bool opening,
+        int xPx,
+        int startYPx,
+        int endYPx,
+        double durationMs,
+        IntPtr insertAfter)
+    {
+        _animatingOpen = opening;
+        _animX = xPx;
+        _animStartY = startYPx;
+        _animEndY = endYPx;
+        _animDurationMs = durationMs;
+        _animInsertAfter = insertAfter;
+        _animStartTicks = Stopwatch.GetTimestamp();
+
+        if (!_isAnimating)
+        {
+            _isAnimating = true;
+            CompositionTarget.Rendering += OnAnimationFrame;
+        }
+    }
+
+    private void StopSlideAnimation()
+    {
+        if (_isAnimating)
+        {
+            _isAnimating = false;
+            CompositionTarget.Rendering -= OnAnimationFrame;
+        }
+    }
+
+    private void OnAnimationFrame(object? sender, EventArgs e)
+    {
+        if (!_isAnimating) return;
+
+        double elapsedMs = (Stopwatch.GetTimestamp() - _animStartTicks) * 1000.0 / Stopwatch.Frequency;
+        double t = Math.Clamp(elapsedMs / _animDurationMs, 0.0, 1.0);
+
+        // Fluent deceleration on open (1 - (1 - t)^4), crisp acceleration on close (t^3).
+        double eased = _animatingOpen
+            ? 1.0 - Math.Pow(1.0 - t, 4.0)
+            : t * t * t;
+
+        int currentY = (int)Math.Round(_animStartY + (_animEndY - _animStartY) * eased);
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            PositionWindowNative(hwnd, _animInsertAfter, _animX, currentY);
+        }
+
+        if (t >= 1.0)
+        {
+            StopSlideAnimation();
+            if (!_animatingOpen)
+            {
+                _isHidingAnimated = false;
+                Hide();
+            }
+        }
+    }
+
+    private static void PositionWindowNative(IntPtr hwnd, IntPtr insertAfter, int xPx, int yPx)
+    {
+        uint flags = NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE;
+        if (insertAfter == IntPtr.Zero)
+        {
+            flags |= NativeMethods.SWP_NOZORDER;
+        }
+
+        NativeMethods.SetWindowPos(hwnd, insertAfter, xPx, yPx, 0, 0, flags);
+    }
+
+    private static IntPtr FindTaskbarWindow(bool isTop)
+    {
+        _ = isTop;
+        return NativeMethods.FindWindowW("Shell_TrayWnd", null);
+    }
+
+    private readonly record struct FlyoutPlacement(
+        int TargetXPx,
+        int TargetYPx,
+        int SlideDistancePx,
+        double Scale,
+        bool IsTaskbarAtTop);
+
+    private FlyoutPlacement ComputePlacement()
     {
         POINT anchorPx;
         RECT trayRect;
@@ -198,7 +357,7 @@ public partial class FlyoutWindow : Window
         var mi = new MONITORINFOEX { cbSize = (uint)Marshal.SizeOf<MONITORINFOEX>() };
         if (!NativeMethods.GetMonitorInfoW(hMonitor, ref mi))
         {
-            return;
+            return new FlyoutPlacement(0, 0, 52, 1.0, false);
         }
 
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
@@ -211,26 +370,26 @@ public partial class FlyoutWindow : Window
         double workBottom = mi.rcWork.Bottom / scale;
 
         double w = ActualWidth > 0 ? ActualWidth : Width;
-        double h = ActualHeight > 0 ? ActualHeight : 140;
+        double h = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 145);
         const double margin = 12.0;
 
         double targetLeft = hasTrayRect
             ? (anchorPx.X / scale) - (w / 2.0)
             : workRight - w - margin;
 
-        // Clamp horizontally inside working area with 12px edge padding.
         targetLeft = Math.Clamp(targetLeft, workLeft + margin, Math.Max(workLeft + margin, workRight - w - margin));
 
-        // Anchor cleanly above bottom taskbar (or inside work area if taskbar is on top/side).
+        bool isTaskbarAtTop = false;
         double targetTop = workBottom - h - margin;
+
         if (hasTrayRect)
         {
             double trayTopDip = trayRect.Top / scale;
             double trayBottomDip = trayRect.Bottom / scale;
 
-            // If taskbar is at top of screen, place flyout below it.
             if (trayBottomDip <= workTop + 16)
             {
+                isTaskbarAtTop = true;
                 targetTop = workTop + margin;
             }
             else if (trayTopDip >= workBottom - 16)
@@ -243,8 +402,36 @@ public partial class FlyoutWindow : Window
             }
         }
 
-        Left = Math.Round(targetLeft);
-        Top = Math.Round(targetTop);
+        int targetYPx = (int)Math.Round(targetTop * scale);
+        int slideDistancePx;
+
+        if (isTaskbarAtTop)
+        {
+            IntPtr aboveMon = NativeMethods.MonitorFromPoint(
+                new POINT { X = anchorPx.X, Y = mi.rcMonitor.Top - 10 },
+                0); // MONITOR_DEFAULTTONULL
+            slideDistancePx = aboveMon == IntPtr.Zero
+                ? (int)Math.Round((h + margin) * scale)
+                : Math.Max(48, mi.rcWork.Top - mi.rcMonitor.Top);
+        }
+        else
+        {
+            IntPtr belowMon = NativeMethods.MonitorFromPoint(
+                new POINT { X = anchorPx.X, Y = mi.rcMonitor.Bottom + 10 },
+                0); // MONITOR_DEFAULTTONULL
+            // Slide completely out from behind the taskbar (top edge starts at rcWork.Bottom)
+            // just like Windows 11 Control Center, unless another monitor is stacked underneath.
+            slideDistancePx = belowMon == IntPtr.Zero
+                ? Math.Max(48, mi.rcWork.Bottom - targetYPx)
+                : Math.Max(48, mi.rcMonitor.Bottom - mi.rcWork.Bottom);
+        }
+
+        return new FlyoutPlacement(
+            TargetXPx: (int)Math.Round(targetLeft * scale),
+            TargetYPx: targetYPx,
+            SlideDistancePx: slideDistancePx,
+            Scale: scale,
+            IsTaskbarAtTop: isTaskbarAtTop);
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
