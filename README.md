@@ -8,6 +8,9 @@
 
 Windows 11 system tray utility for controlling external monitor brightness over hardware DDC/CI.
 
+> [!NOTE]
+> **Desktop & external monitors only:** DimDock is built for desktop setups with external monitors and is not intended for laptop users. It does not control built-in laptop displays, since Windows 11 already includes a native brightness slider in Quick Settings for internal laptop screens. (If you connect a laptop to external DDC/CI monitors, DimDock will only control those external monitors.)
+
 *Note: None of the code in this repository was written by hand; the project was built entirely with Gemini 4 Neon.*
 
 <p align="left">
@@ -50,6 +53,7 @@ dotnet run --project src/DimDock
 ## Troubleshooting
 
 - **Monitor not detected**: Verify **DDC/CI** is enabled in the monitor's OSD settings. Some HDMI/DisplayPort docks or KVMs block I2C/DDC traffic.
+- **Laptop built-in screen not listed**: DimDock is designed for desktop setups with external monitors over DDC/CI and does not control internal laptop panels. Use Windows 11's built-in Quick Settings brightness slider for laptop screens.
 - **Settings**: `%LocalAppData%\DimDock\settings.json`
 - **Log**: `%LocalAppData%\DimDock\dimdock.log`
 
