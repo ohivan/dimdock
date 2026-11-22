@@ -2131,20 +2131,18 @@ html.anim-ready .demo-surface.is-revealed .demo-video-frame video {
 
 /* Feature icons pop gently as cards arrive */
 html.anim-ready .features-grid:not(.is-revealed) .feature-icon {
-  transform: scale(0.8);
+  scale: 0.8;
   opacity: 0;
 }
 
 html.anim-ready .features-grid.is-revealed .feature-icon {
+  scale: 1;
   opacity: 1;
   transition:
-    transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--reveal-delay, 0ms) + 80ms),
+    scale 520ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--reveal-delay, 0ms) + 80ms),
     opacity 420ms ease calc(var(--reveal-delay, 0ms) + 60ms),
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
     filter 240ms ease;
-}
-
-html.anim-ready .features-grid.is-revealed .feature-card:hover .feature-icon {
-  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), filter 240ms ease;
 }
 
 /* Memory benchmark bars */
