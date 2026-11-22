@@ -59,6 +59,7 @@ internal static class NativeMethods
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_ASYNCWINDOWPOS = 0x4000;
 
     // System metrics
     public const int SM_CXSMICON = 49;
@@ -236,6 +237,9 @@ internal static class NativeMethods
 
     [DllImport("dwmapi.dll")]
     public static extern int DwmGetColorizationColor(out uint pcrColorization, [MarshalAs(UnmanagedType.Bool)] out bool pfOpaqueBlend);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmFlush();
 
     // kernel32.dll
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]

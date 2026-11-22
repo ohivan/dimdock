@@ -15,8 +15,8 @@ namespace DimDock.UI;
 
 public partial class FlyoutWindow : Window
 {
-    private const double OpenDurationMs = 230.0;
-    private const double CloseDurationMs = 150.0;
+    private const double OpenDurationMs = 300.0;
+    private const double CloseDurationMs = 175.0;
 
     private readonly BrightnessController _controller;
     private readonly TrayIconService _trayIconService;
@@ -26,16 +26,14 @@ public partial class FlyoutWindow : Window
     private bool _isHidingAnimated;
     private bool _isCloaked;
 
-    // Active VSync slide animation state
-    private bool _isAnimating;
-    private bool _animatingOpen;
+    // Active native-VSync (DwmFlush) slide animation state
+    private CancellationTokenSource? _slideCts;
+    private bool _isWaitingWarmup;
     private int _warmupFramesRemaining;
-    private long _animStartTicks;
-    private double _animDurationMs;
-    private int _animX;
-    private int _animStartY;
-    private int _animEndY;
-    private IntPtr _animInsertAfter;
+    private int _pendingX;
+    private int _pendingStartY;
+    private int _pendingEndY;
+    private IntPtr _pendingInsertAfter;
 
     public FlyoutWindow(
         BrightnessController controller,
@@ -132,19 +130,20 @@ public partial class FlyoutWindow : Window
             NativeMethods.SetForegroundWindow(hwnd);
             Activate();
             PositionWindowNative(hwnd, placement.TaskbarHwnd, placement.TargetXPx, startY);
+            BeginNativeVSyncSlide(hwnd, opening: true, placement.TargetXPx, startY, placement.TargetYPx, OpenDurationMs);
         }
-
-        // If the window was just shown from hidden, wait 2 render frames while cloaked so WPF finishes
-        // presenting its painted surface before uncloaking, taking focus (which dismisses the overflow dock),
-        // and starting the slide.
-        StartSlideAnimation(
-            opening: true,
-            xPx: placement.TargetXPx,
-            startYPx: startY,
-            endYPx: placement.TargetYPx,
-            durationMs: OpenDurationMs,
-            insertAfter: placement.TaskbarHwnd,
-            warmupFrames: wasHidden ? 2 : 0);
+        else
+        {
+            // Wait 2 WPF render frames while cloaked so the swapchain is fully painted,
+            // then uncloak, take focus, and run the native-Hz DwmFlush slide animation.
+            _pendingX = placement.TargetXPx;
+            _pendingStartY = startY;
+            _pendingEndY = placement.TargetYPx;
+            _pendingInsertAfter = placement.TaskbarHwnd;
+            _warmupFramesRemaining = 2;
+            _isWaitingWarmup = true;
+            CompositionTarget.Rendering += OnWarmupFrame;
+        }
     }
 
     public void HideFlyout(bool immediate = false)
@@ -166,18 +165,25 @@ public partial class FlyoutWindow : Window
         _isHidingAnimated = true;
 
         var placement = ComputePlacement();
-        int currentYPx = (int)Math.Round(Top * placement.Scale);
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        int currentYPx = (hwnd != IntPtr.Zero && NativeMethods.GetWindowRect(hwnd, out RECT curRect))
+            ? curRect.Top
+            : (int)Math.Round(Top * placement.Scale);
+
         int endYPx = placement.IsTaskbarAtTop
             ? placement.TargetYPx - placement.SlideDistancePx
             : placement.TargetYPx + placement.SlideDistancePx;
 
-        StartSlideAnimation(
-            opening: false,
-            xPx: placement.TargetXPx,
-            startYPx: currentYPx,
-            endYPx: endYPx,
-            durationMs: CloseDurationMs,
-            insertAfter: placement.TaskbarHwnd);
+        if (hwnd != IntPtr.Zero)
+        {
+            PositionWindowNative(hwnd, placement.TaskbarHwnd, placement.TargetXPx, currentYPx);
+            BeginNativeVSyncSlide(hwnd, opening: false, placement.TargetXPx, currentYPx, endYPx, CloseDurationMs);
+        }
+        else
+        {
+            _isHidingAnimated = false;
+            Hide();
+        }
     }
 
     public void SyncUiState()
@@ -192,7 +198,7 @@ public partial class FlyoutWindow : Window
             ? "Monitors linked (click to unlink)"
             : "Link all monitors";
 
-        if (IsVisible && !_isAnimating && !_isHidingAnimated)
+        if (IsVisible && _slideCts is null && !_isWaitingWarmup && !_isHidingAnimated)
         {
             UpdateLayout();
             var placement = ComputePlacement();
@@ -257,95 +263,171 @@ public partial class FlyoutWindow : Window
         Close();
     }
 
-    private void StartSlideAnimation(
-        bool opening,
-        int xPx,
-        int startYPx,
-        int endYPx,
-        double durationMs,
-        IntPtr insertAfter,
-        int warmupFrames = 0)
+    private void OnWarmupFrame(object? sender, EventArgs e)
     {
-        _animatingOpen = opening;
-        _animX = xPx;
-        _animStartY = startYPx;
-        _animEndY = endYPx;
-        _animDurationMs = durationMs;
-        _animInsertAfter = insertAfter;
-        _warmupFramesRemaining = warmupFrames;
-        _animStartTicks = Stopwatch.GetTimestamp();
+        if (!_isWaitingWarmup) return;
 
-        if (!_isAnimating)
+        _warmupFramesRemaining--;
+        if (_warmupFramesRemaining > 0) return;
+
+        _isWaitingWarmup = false;
+        CompositionTarget.Rendering -= OnWarmupFrame;
+
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        PositionWindowNative(hwnd, _pendingInsertAfter, _pendingX, _pendingStartY);
+        SetCloaked(hwnd, false);
+        // Take foreground focus AFTER uncloaking so Windows Shell sees the focus transfer cleanly.
+        NativeMethods.SetForegroundWindow(hwnd);
+        Activate();
+        PositionWindowNative(hwnd, _pendingInsertAfter, _pendingX, _pendingStartY);
+
+        BeginNativeVSyncSlide(hwnd, opening: true, _pendingX, _pendingStartY, _pendingEndY, OpenDurationMs);
+    }
+
+    private void BeginNativeVSyncSlide(IntPtr hwnd, bool opening, int xPx, int startYPx, int endYPx, double durationMs)
+    {
+        StopSlideAnimation();
+
+        var cts = new CancellationTokenSource();
+        _slideCts = cts;
+        var ct = cts.Token;
+
+        // Run a dedicated DwmFlush() loop so movement locks to the monitor's true native refresh rate
+        // (e.g. 240Hz / 144Hz / 60Hz) instead of WPF's 60fps CompositionTarget cap.
+        var thread = new Thread(() =>
         {
-            _isAnimating = true;
-            CompositionTarget.Rendering += OnAnimationFrame;
-        }
+            try
+            {
+                long startTicks = Stopwatch.GetTimestamp();
+                int lastY = startYPx;
+
+                while (!ct.IsCancellationRequested)
+                {
+                    if (NativeMethods.DwmFlush() != 0)
+                    {
+                        Thread.Sleep(4);
+                    }
+
+                    if (ct.IsCancellationRequested) break;
+
+                    double elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
+                    double t = Math.Clamp(elapsedMs / durationMs, 0.0, 1.0);
+
+                    // Official Windows 11 Fluent 2 Control Center curves:
+                    // Open:  cubic-bezier(0.1, 0.9, 0.2, 1.0) — explosive start, long smooth settle
+                    // Close: cubic-bezier(0.7, 0.0, 1.0, 0.5) — gentle pull-off, fast whip into taskbar
+                    double eased = opening
+                        ? EvaluateCubicBezier(t, 0.1, 0.9, 0.2, 1.0)
+                        : EvaluateCubicBezier(t, 0.7, 0.0, 1.0, 0.5);
+
+                    int currentY = (int)Math.Round(startYPx + (endYPx - startYPx) * eased);
+                    if (currentY != lastY)
+                    {
+                        lastY = currentY;
+                        NativeMethods.SetWindowPos(
+                            hwnd,
+                            IntPtr.Zero,
+                            xPx,
+                            currentY,
+                            0,
+                            0,
+                            NativeMethods.SWP_NOSIZE |
+                            NativeMethods.SWP_NOACTIVATE |
+                            NativeMethods.SWP_NOZORDER |
+                            NativeMethods.SWP_ASYNCWINDOWPOS);
+                    }
+
+                    if (t >= 1.0) break;
+                }
+
+                if (!ct.IsCancellationRequested)
+                {
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        if (!ReferenceEquals(_slideCts, cts)) return;
+                        _slideCts = null;
+
+                        if (!opening)
+                        {
+                            _isHidingAnimated = false;
+                            SetCloaked(hwnd, false);
+                            Hide();
+                        }
+                    });
+                }
+            }
+            finally
+            {
+                cts.Dispose();
+            }
+        })
+        {
+            IsBackground = true,
+            Priority = ThreadPriority.AboveNormal,
+            Name = "DimDock_VSyncSlide"
+        };
+
+        thread.Start();
     }
 
     private void StopSlideAnimation()
     {
-        if (_isAnimating)
+        if (_isWaitingWarmup)
         {
-            _isAnimating = false;
+            _isWaitingWarmup = false;
             _warmupFramesRemaining = 0;
-            CompositionTarget.Rendering -= OnAnimationFrame;
+            CompositionTarget.Rendering -= OnWarmupFrame;
+        }
+
+        if (_slideCts is { } cts)
+        {
+            _slideCts = null;
+            try { cts.Cancel(); } catch (ObjectDisposedException) { }
         }
     }
 
-    private void OnAnimationFrame(object? sender, EventArgs e)
+    private static double EvaluateCubicBezier(double x, double x1, double y1, double x2, double y2)
     {
-        if (!_isAnimating) return;
+        if (x <= 0.0) return 0.0;
+        if (x >= 1.0) return 1.0;
 
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
-
-        // Wait for WPF's render thread to present the first painted frame before uncloaking.
-        if (_warmupFramesRemaining > 0)
+        // Solve bezier X(u) = x via Newton-Raphson with binary search fallback.
+        double u = x;
+        for (int i = 0; i < 6; i++)
         {
-            _warmupFramesRemaining--;
-            if (_warmupFramesRemaining == 0)
-            {
-                if (hwnd != IntPtr.Zero)
-                {
-                    PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
-                    SetCloaked(hwnd, false);
-                    // Take foreground focus AFTER uncloaking (and after Explorer finishes its click)
-                    // so Windows Shell cleanly dismisses the overflow dock and enables Deactivated/Escape.
-                    NativeMethods.SetForegroundWindow(hwnd);
-                    Activate();
-                    PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
-                }
-                _animStartTicks = Stopwatch.GetTimestamp();
-            }
-            return;
+            double bx = SampleBezier(u, x1, x2) - x;
+            if (Math.Abs(bx) < 1e-5) break;
+            double dx = SampleBezierDerivative(u, x1, x2);
+            if (Math.Abs(dx) < 1e-6) break;
+            u = Math.Clamp(u - bx / dx, 0.0, 1.0);
         }
 
-        double elapsedMs = (Stopwatch.GetTimestamp() - _animStartTicks) * 1000.0 / Stopwatch.Frequency;
-        double t = Math.Clamp(elapsedMs / _animDurationMs, 0.0, 1.0);
-
-        // Fluent deceleration on open (1 - (1 - t)^4), crisp acceleration on close (t^3).
-        double eased = _animatingOpen
-            ? 1.0 - Math.Pow(1.0 - t, 4.0)
-            : t * t * t;
-
-        int currentY = (int)Math.Round(_animStartY + (_animEndY - _animStartY) * eased);
-        if (hwnd != IntPtr.Zero)
+        if (Math.Abs(SampleBezier(u, x1, x2) - x) > 1e-4)
         {
-            PositionWindowNative(hwnd, _animInsertAfter, _animX, currentY);
-        }
-
-        if (t >= 1.0)
-        {
-            StopSlideAnimation();
-            if (!_animatingOpen)
+            double lo = 0.0, hi = 1.0;
+            for (int i = 0; i < 12; i++)
             {
-                _isHidingAnimated = false;
-                if (hwnd != IntPtr.Zero)
-                {
-                    SetCloaked(hwnd, false);
-                }
-                Hide();
+                u = (lo + hi) * 0.5;
+                if (SampleBezier(u, x1, x2) < x) lo = u;
+                else hi = u;
             }
         }
+
+        return SampleBezier(u, y1, y2);
+    }
+
+    private static double SampleBezier(double u, double p1, double p2)
+    {
+        double inv = 1.0 - u;
+        return 3.0 * inv * inv * u * p1 + 3.0 * inv * u * u * p2 + u * u * u;
+    }
+
+    private static double SampleBezierDerivative(double u, double p1, double p2)
+    {
+        double inv = 1.0 - u;
+        return 3.0 * inv * inv * p1 + 6.0 * inv * u * (p2 - p1) + 3.0 * u * u * (1.0 - p2);
     }
 
     private void SetCloaked(IntPtr hwnd, bool cloaked)
