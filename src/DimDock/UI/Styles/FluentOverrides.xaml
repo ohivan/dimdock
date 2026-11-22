@@ -77,17 +77,49 @@
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,10,0" />
 
-                                <!-- Checkbox glyph for checkable toggles (no blank left gap when unchecked) -->
-                                <TextBlock x:Name="ToggleGlyph"
-                                           Grid.Column="0"
-                                           Text="&#xE739;"
-                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="14"
-                                           Foreground="{DynamicResource DimTextSecondaryBrush}"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Center"
-                                           Margin="0,1,10,0"
-                                           Visibility="Collapsed" />
+                                <!-- Real rounded Windows 11 Fluent CheckBox indicator -->
+                                <Border x:Name="CheckBoxVisual"
+                                        Grid.Column="0"
+                                        Width="14"
+                                        Height="14"
+                                        CornerRadius="3.5"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource DimTextMutedBrush}"
+                                        Background="Transparent"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="CheckBoxMark"
+                                               Text="&#xE73E;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="9.5"
+                                               FontWeight="Bold"
+                                               Foreground="#141414"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Visibility="Collapsed" />
+                                </Border>
+
+                                <!-- Real Windows 11 Fluent Radio indicator (for submenu Tag="radio" items) -->
+                                <Grid x:Name="RadioVisual"
+                                      Grid.Column="0"
+                                      Width="14"
+                                      Height="14"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"
+                                      Visibility="Collapsed">
+                                    <Ellipse x:Name="RadioOuter"
+                                             Width="14"
+                                             Height="14"
+                                             Stroke="{DynamicResource DimTextMutedBrush}"
+                                             StrokeThickness="1"
+                                             Fill="Transparent" />
+                                    <Ellipse x:Name="RadioInner"
+                                             Width="6"
+                                             Height="6"
+                                             Fill="#141414"
+                                             Visibility="Collapsed" />
+                                </Grid>
 
                                 <!-- Item label -->
                                 <ContentPresenter Grid.Column="1"
@@ -138,9 +170,9 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <!-- Checkable items show a visible outline box when off and accent checkbox when on -->
+                        <!-- Checkable items show a crisp rounded Fluent checkbox -->
                         <Trigger Property="IsCheckable" Value="True">
-                            <Setter TargetName="ToggleGlyph" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="CheckBoxVisual" Property="Visibility" Value="Visible" />
                             <Setter TargetName="IconHost" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <MultiTrigger>
@@ -148,25 +180,23 @@
                                 <Condition Property="IsCheckable" Value="True" />
                                 <Condition Property="IsChecked" Value="True" />
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xE73D;" />
-                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="CheckBoxVisual" Property="Background" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="CheckBoxVisual" Property="BorderBrush" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="CheckBoxMark" Property="Visibility" Value="Visible" />
                         </MultiTrigger>
                         <!-- Radio-style submenu options (Tag="radio") -->
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="Tag" Value="radio" />
-                                <Condition Property="IsChecked" Value="False" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xECCA;" />
-                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimTextMutedBrush}" />
-                        </MultiTrigger>
+                        <Trigger Property="Tag" Value="radio">
+                            <Setter TargetName="CheckBoxVisual" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="RadioVisual" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
                                 <Condition Property="Tag" Value="radio" />
                                 <Condition Property="IsChecked" Value="True" />
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="ToggleGlyph" Property="Text" Value="&#xECCB;" />
-                            <Setter TargetName="ToggleGlyph" Property="Foreground" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="RadioOuter" Property="Fill" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="RadioOuter" Property="Stroke" Value="{DynamicResource DimAccentBrush}" />
+                            <Setter TargetName="RadioInner" Property="Visibility" Value="Visible" />
                         </MultiTrigger>
                         <Trigger Property="Role" Value="SubmenuHeader">
                             <Setter TargetName="SubmenuChevron" Property="Visibility" Value="Visible" />
