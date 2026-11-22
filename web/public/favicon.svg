@@ -1,7 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="7" fill="#0b1622" />
-  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="rgba(255,255,255,0.14)" />
-  <g transform="translate(6 6) scale(1.25)" stroke="#ffffff" stroke-width="1.45" stroke-linecap="butt">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
+  <style>
+    .sun {
+      stroke: #000000;
+    }
+    @media (prefers-color-scheme: dark) {
+      .sun {
+        stroke: #ffffff;
+      }
+    }
+  </style>
+  <g class="sun" stroke-width="1.45" stroke-linecap="butt">
     <circle cx="8" cy="8" r="3" />
     <line x1="8" y1="0" x2="8" y2="3" />
     <line x1="8" y1="13" x2="8" y2="16" />

@@ -252,3 +252,54 @@ internal struct BITMAPINFO
     public BITMAPINFOHEADER bmiHeader;
     public uint bmiColors;
 }
+
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+internal struct WNDCLASSEXW
+{
+    public uint cbSize;
+    public uint style;
+    public IntPtr lpfnWndProc;
+    public int cbClsExtra;
+    public int cbWndExtra;
+    public IntPtr hInstance;
+    public IntPtr hIcon;
+    public IntPtr hCursor;
+    public IntPtr hbrBackground;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string? lpszMenuName;
+    [MarshalAs(UnmanagedType.LPWStr)]
+    public string lpszClassName;
+    public IntPtr hIconSm;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct MSG
+{
+    public IntPtr hwnd;
+    public uint message;
+    public IntPtr wParam;
+    public IntPtr lParam;
+    public uint time;
+    public POINT pt;
+    public uint lPrivate;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct PAINTSTRUCT
+{
+    public IntPtr hdc;
+    public int fErase;
+    public RECT rcPaint;
+    public int fRestore;
+    public int fIncUpdate;
+    public fixed byte rgbReserved[32];
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct TRACKMOUSEEVENT
+{
+    public uint cbSize;
+    public uint dwFlags;
+    public IntPtr hwndTrack;
+    public uint dwHoverTime;
+}

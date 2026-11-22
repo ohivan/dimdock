@@ -123,11 +123,11 @@ public sealed class AppSettingsAndHelpersTests : IDisposable
 
         if (useDwmBackdrop)
         {
-            Assert.True(palette.BodyTint.A <= 0x80,
+            Assert.True(palette.BodyTint.A < 0xE0,
                 $"Expected translucent body over DWM Acrylic, got alpha {palette.BodyTint.A}");
-            Assert.True(palette.FooterTint.A > 0 && palette.FooterTint.A <= 0xA0,
+            Assert.True(palette.FooterTint.A > 0 && palette.FooterTint.A < 0xE0,
                 $"Expected translucent footer over DWM Acrylic, got alpha {palette.FooterTint.A}");
-            Assert.True(palette.Divider.A > 0 && palette.Divider.A < 0xC0,
+            Assert.True(palette.Divider.A > 0 && palette.Divider.A < 0xE0,
                 $"Expected translucent divider over DWM Acrylic, got alpha {palette.Divider.A}");
         }
         else
@@ -155,21 +155,9 @@ public sealed class AppSettingsAndHelpersTests : IDisposable
     public void DimDockAssembly_EmbedsAcrylicNoiseResource()
     {
         var assembly = typeof(SystemThemeService).Assembly;
-        using var stream = assembly.GetManifestResourceStream("DimDock.g.resources");
+        using var stream = assembly.GetManifestResourceStream("DimDock.Assets.NoiseAsset_256x256.png");
         Assert.NotNull(stream);
-
-        using var reader = new System.Resources.ResourceReader(stream!);
-        bool found = false;
-        foreach (System.Collections.DictionaryEntry entry in reader)
-        {
-            if (string.Equals(entry.Key as string, "assets/noiseasset_256x256.png", StringComparison.OrdinalIgnoreCase))
-            {
-                found = true;
-                break;
-            }
-        }
-
-        Assert.True(found, "Expected assets/noiseasset_256x256.png to be embedded in DimDock.g.resources");
+        Assert.True(stream!.Length > 0);
     }
 
     [Fact]

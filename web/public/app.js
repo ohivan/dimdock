@@ -10,12 +10,77 @@ function clamp(value, min, max) {
 
 function initCopyButtons() {
   const cmdText = `winget install ${CONFIG.wingetId}`;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const sparkColors = ["#6ccb5f", "#b7f5ad", "#4cc2ff", "#f4df9e", "#ffffff"];
+
   document.querySelectorAll("[data-winget-cmd]").forEach((el) => {
     el.textContent = cmdText;
   });
 
-  document.querySelectorAll("[data-copy-winget]").forEach((btn) => {
+  const spawnCopySparks = (btn) => {
+    if (reducedMotion) return;
+    const count = 9;
+    const halfW = btn.offsetWidth * 0.44;
+    const halfH = btn.offsetHeight * 0.42;
+
+    for (let i = 0; i < count; i++) {
+      const spark = document.createElement("span");
+      spark.className = "copy-spark";
+
+      const baseAngle = (i / count) * Math.PI * 2;
+      const angle = baseAngle + (Math.random() - 0.5) * 0.45;
+      const sx0 = Math.cos(angle) * halfW;
+      const sy0 = Math.sin(angle) * halfH;
+      const travel = 16 + Math.random() * 18;
+      const sx1 = sx0 + Math.cos(angle) * travel;
+      const sy1 = sy0 + Math.sin(angle) * travel - 4;
+      const size = Math.random() > 0.45 ? 4 : 3;
+      const dur = Math.round(420 + Math.random() * 160);
+      const color = sparkColors[i % sparkColors.length];
+
+      spark.style.setProperty("--sx0", `${sx0.toFixed(1)}px`);
+      spark.style.setProperty("--sy0", `${sy0.toFixed(1)}px`);
+      spark.style.setProperty("--sx1", `${sx1.toFixed(1)}px`);
+      spark.style.setProperty("--sy1", `${sy1.toFixed(1)}px`);
+      spark.style.setProperty("--spark-size", `${size}px`);
+      spark.style.setProperty("--spark-dur", `${dur}ms`);
+      spark.style.setProperty("--spark-color", color);
+
+      btn.appendChild(spark);
+      const cleanup = () => spark.remove();
+      spark.addEventListener("animationend", cleanup, { once: true });
+      setTimeout(cleanup, dur + 80);
+    }
+  };
+
+  const copyButtons = Array.from(document.querySelectorAll("[data-copy-winget]"));
+
+  const syncLabelWidths = () => {
+    for (const btn of copyButtons) {
+      const stack = btn.querySelector(".copy-label-stack");
+      const defaultLabel = btn.querySelector(".copy-label-default");
+      const doneLabel = btn.querySelector(".copy-label-done");
+      if (!stack || !defaultLabel || !doneLabel) continue;
+
+      const copyW = Math.max(defaultLabel.offsetWidth, defaultLabel.scrollWidth);
+      const copiedW = Math.max(doneLabel.offsetWidth, doneLabel.scrollWidth);
+      if (copyW > 0 && copiedW > 0) {
+        stack.style.setProperty("--copy-w", `${copyW + 1}px`);
+        stack.style.setProperty("--copied-w", `${copiedW + 1}px`);
+      }
+    }
+  };
+
+  syncLabelWidths();
+  document.fonts?.ready?.then(syncLabelWidths);
+
+  copyButtons.forEach((btn) => {
+    const row = btn.closest(".hero-winget, .winget-command-row");
+    const defaultLabel = btn.querySelector(".copy-label-default");
+    const doneLabel = btn.querySelector(".copy-label-done");
     let resetTimer = null;
+    let pulseTimer = null;
+
     btn.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(cmdText);
@@ -30,15 +95,29 @@ function initCopyButtons() {
         temp.remove();
       }
 
-      const label = btn.querySelector(".copy-label");
-      btn.classList.add("is-copied");
-      if (label) label.textContent = "Copied";
+      btn.classList.remove("is-copy-pulse");
+      row?.classList.remove("is-copy-pulse");
+      void btn.offsetWidth;
+
+      btn.classList.add("is-copied", "is-copy-pulse");
+      row?.classList.add("is-copied", "is-copy-pulse");
+      defaultLabel?.setAttribute("aria-hidden", "true");
+      doneLabel?.removeAttribute("aria-hidden");
+      spawnCopySparks(btn);
+
+      clearTimeout(pulseTimer);
+      pulseTimer = setTimeout(() => {
+        btn.classList.remove("is-copy-pulse");
+        row?.classList.remove("is-copy-pulse");
+      }, 620);
 
       clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         btn.classList.remove("is-copied");
-        if (label) label.textContent = "Copy";
-      }, 1800);
+        row?.classList.remove("is-copied");
+        defaultLabel?.removeAttribute("aria-hidden");
+        doneLabel?.setAttribute("aria-hidden", "true");
+      }, 1900);
     });
   });
 }
@@ -462,11 +541,22 @@ function initHeroFlyoutPanel() {
   // Interactive 3-monitor state for the hero WinUI 3 flyout
   const heroState = {
     monitors: [
-      { id: "hero-mon-1", brightness: 82 },
-      { id: "hero-mon-2", brightness: 64 },
-      { id: "hero-mon-3", brightness: 48 },
+      { id: "hero-mon-1", brightness: 82, target: 82, start: 18 },
+      { id: "hero-mon-2", brightness: 64, target: 64, start: 12 },
+      { id: "hero-mon-3", brightness: 48, target: 48, start: 8 },
     ],
     linked: false,
+  };
+
+  let introSweepRaf = 0;
+  let introSweepCancelled = false;
+
+  const cancelIntroSweep = () => {
+    introSweepCancelled = true;
+    if (introSweepRaf) {
+      cancelAnimationFrame(introSweepRaf);
+      introSweepRaf = 0;
+    }
   };
 
   const syncHeroSliders = () => {
@@ -489,6 +579,7 @@ function initHeroFlyoutPanel() {
   };
 
   const setHeroBrightness = (id, nextValue) => {
+    cancelIntroSweep();
     const clamped = clamp(Math.round(nextValue), 0, 100);
     if (heroState.linked) {
       for (const monitor of heroState.monitors) {
@@ -510,7 +601,10 @@ function initHeroFlyoutPanel() {
       input.addEventListener("input", () => {
         setHeroBrightness(monitor.id, Number(input.value));
       });
-      input.addEventListener("pointerdown", () => wrap?.classList.add("is-active"));
+      input.addEventListener("pointerdown", () => {
+        cancelIntroSweep();
+        wrap?.classList.add("is-active");
+      });
       input.addEventListener("pointerup", () => wrap?.classList.remove("is-active"));
       input.addEventListener("pointercancel", () => wrap?.classList.remove("is-active"));
       input.addEventListener("blur", () => wrap?.classList.remove("is-active"));
@@ -530,6 +624,7 @@ function initHeroFlyoutPanel() {
   }
 
   document.getElementById("hero-link-btn")?.addEventListener("click", () => {
+    cancelIntroSweep();
     heroState.linked = !heroState.linked;
     if (heroState.linked) {
       const avg = Math.round(
@@ -542,10 +637,55 @@ function initHeroFlyoutPanel() {
     syncHeroSliders();
   });
 
-  syncHeroSliders();
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const shouldSweep = !reducedMotion && document.documentElement.classList.contains("anim-ready");
+
+  if (shouldSweep) {
+    for (const monitor of heroState.monitors) {
+      monitor.brightness = monitor.start;
+    }
+    syncHeroSliders();
+
+    const startIntroSweep = () => {
+      if (introSweepCancelled) return;
+      const startTime = performance.now();
+      const duration = 820;
+      const stagger = 95;
+
+      const tickSweep = (now) => {
+        if (introSweepCancelled) return;
+        let allDone = true;
+
+        heroState.monitors.forEach((monitor, idx) => {
+          const elapsed = now - startTime - idx * stagger;
+          if (elapsed <= 0) {
+            allDone = false;
+            return;
+          }
+          const t = clamp(elapsed / duration, 0, 1);
+          const eased = 1 - Math.pow(1 - t, 4);
+          monitor.brightness = Math.round(monitor.start + (monitor.target - monitor.start) * eased);
+          if (t < 1) allDone = false;
+        });
+
+        syncHeroSliders();
+
+        if (!allDone) {
+          introSweepRaf = requestAnimationFrame(tickSweep);
+        } else {
+          introSweepRaf = 0;
+        }
+      };
+
+      introSweepRaf = requestAnimationFrame(tickSweep);
+    };
+
+    window.addEventListener("dimdock:loaded", () => setTimeout(startIntroSweep, 290), { once: true });
+  } else {
+    syncHeroSliders();
+  }
 
   // Subtle 3D perspective angled toward the hero text + smooth mouse-follow tilt
-  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const compactMedia = window.matchMedia?.("(max-width: 920px)");
   if (reducedMotion) return;
 
@@ -639,8 +779,178 @@ function initHeroFlyoutPanel() {
   applyTransform();
 }
 
+function triggerIntroGlint(el) {
+  if (!el) return;
+  el.classList.remove("is-intro-glint");
+  void el.offsetWidth;
+  el.classList.add("is-intro-glint");
+  setTimeout(() => el.classList.remove("is-intro-glint"), 820);
+}
+
+function initPageLoadAnimations() {
+  const root = document.documentElement;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion || !root.classList.contains("anim-ready")) {
+    root.classList.add("is-loaded");
+    return;
+  }
+
+  let fired = false;
+  const revealHero = () => {
+    if (fired) return;
+    fired = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.add("is-loaded");
+        window.dispatchEvent(new CustomEvent("dimdock:loaded"));
+        setTimeout(() => {
+          triggerIntroGlint(document.querySelector(".hero-winget"));
+        }, 760);
+      });
+    });
+  };
+
+  if (document.fonts?.ready) {
+    Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => setTimeout(resolve, 160)),
+    ]).then(revealHero);
+  } else {
+    revealHero();
+  }
+}
+
+function animateBenchmarkCounters(container) {
+  const counters = container.querySelectorAll("[data-count-to]");
+  if (!counters.length) return;
+
+  const startTime = performance.now();
+  const duration = 880;
+
+  const items = Array.from(counters).map((el) => ({
+    el,
+    target: Number(el.getAttribute("data-count-to") || 0),
+    decimals: Number(el.getAttribute("data-count-decimals") || 0),
+    suffix: el.getAttribute("data-count-suffix") || "",
+    delay: Number(el.getAttribute("data-count-delay") || 0),
+  }));
+
+  const tick = (now) => {
+    let allDone = true;
+    for (const item of items) {
+      const elapsed = now - startTime - item.delay;
+      if (elapsed <= 0) {
+        allDone = false;
+        item.el.textContent = `${(0).toFixed(item.decimals)}${item.suffix}`;
+        continue;
+      }
+      const t = clamp(elapsed / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - t, 4);
+      const val = item.target * eased;
+      item.el.textContent = `${val.toFixed(item.decimals)}${item.suffix}`;
+      if (t < 1) allDone = false;
+    }
+    if (!allDone) {
+      requestAnimationFrame(tick);
+    }
+  };
+
+  requestAnimationFrame(tick);
+}
+
+function initScrollAnimations() {
+  const root = document.documentElement;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const revealEls = Array.from(document.querySelectorAll("[data-reveal]"));
+
+  if (reducedMotion || !root.classList.contains("anim-ready")) {
+    revealEls.forEach((el) => el.classList.add("is-revealed"));
+    return;
+  }
+
+  // 1. Scroll progress hairline + bottom-of-page reveal safeguard
+  const progressBar = document.getElementById("scroll-progress");
+  let scrollRaf = 0;
+
+  const revealElement = (el) => {
+    if (el.classList.contains("is-revealed")) return;
+    el.classList.add("is-revealed");
+
+    if (el.hasAttribute("data-benchmark-animate")) {
+      animateBenchmarkCounters(el);
+    }
+
+    if (el.classList.contains("install-grid")) {
+      const cmdRow = el.querySelector(".winget-command-row");
+      setTimeout(() => triggerIntroGlint(cmdRow), 460);
+    }
+  };
+
+  const updateScrollEffects = () => {
+    scrollRaf = 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    const progress = clamp(scrollY / maxScroll, 0, 1);
+
+    root.classList.toggle("is-scrolled", scrollY > 18);
+    if (progressBar) {
+      progressBar.style.transform = `scaleX(${progress.toFixed(4)})`;
+    }
+
+    // Ensure elements near the bottom of the page (like the footer) always reveal
+    if (scrollY + window.innerHeight >= document.documentElement.scrollHeight - 80) {
+      for (const el of revealEls) {
+        revealElement(el);
+      }
+    }
+  };
+
+  const onScroll = () => {
+    if (!scrollRaf) {
+      scrollRaf = requestAnimationFrame(updateScrollEffects);
+    }
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  updateScrollEffects();
+
+  // 2. Scroll-triggered reveals with benchmark counter + install glint hooks
+  if (typeof IntersectionObserver === "undefined") {
+    revealEls.forEach(revealElement);
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          revealElement(entry.target);
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    {
+      threshold: 0.05,
+      rootMargin: "0px 0px -24px 0px",
+    }
+  );
+
+  const viewportH = window.innerHeight || 800;
+  for (const el of revealEls) {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < viewportH * 0.95) {
+      revealElement(el);
+    } else {
+      observer.observe(el);
+    }
+  }
+}
+
 initHeroPixelFade();
 initHeroFlyoutPanel();
 initCopyButtons();
 initPixelDitherSurfaces();
+initPageLoadAnimations();
+initScrollAnimations();
 hydrateLatestRelease();

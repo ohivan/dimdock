@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Windows.Threading;
 using DimDock.Interop;
 
 namespace DimDock.UI;
@@ -10,14 +9,14 @@ namespace DimDock.UI;
 /// </summary>
 internal sealed class NativeVSyncSlideAnimator : IDisposable
 {
-    private readonly Dispatcher _dispatcher;
+    private readonly Action<Action> _beginInvoke;
     private readonly object _gate = new();
     private CancellationTokenSource? _activeCts;
     private bool _disposed;
 
-    public NativeVSyncSlideAnimator(Dispatcher dispatcher)
+    public NativeVSyncSlideAnimator(Action<Action> beginInvoke)
     {
-        _dispatcher = dispatcher;
+        _beginInvoke = beginInvoke;
     }
 
     public bool IsRunning
@@ -72,8 +71,6 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
             ct = cts.Token;
         }
 
-        // Run a dedicated DwmFlush() loop so movement locks to the monitor's true native refresh rate
-        // (e.g. 240Hz / 144Hz / 60Hz) instead of WPF's 60fps CompositionTarget cap.
         // Cap stack size to 128 KB (instead of the default 1 MB) for this tiny animation loop.
         var thread = new Thread(() =>
         {
@@ -117,7 +114,7 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
 
                 if (!ct.IsCancellationRequested)
                 {
-                    _dispatcher.BeginInvoke(() =>
+                    _beginInvoke(() =>
                     {
                         lock (_gate)
                         {
@@ -177,10 +174,6 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
         }
     }
 
-    // Official Windows 11 Fluent 2 Control Center curves:
-    // Open:  cubic-bezier(0.1, 0.9, 0.2, 1.0) — explosive start, long smooth settle
-    // Close: cubic-bezier(0.7, 0.0, 1.0, 0.5) — gentle pull-off, fast whip into taskbar
-    // Menu:  cubic-bezier(0.33, 1.0, 0.68, 1.0) — crisp cubic ease-out for short context menu rises
     internal static double EvaluateOpenEase(double t) => EvaluateCubicBezier(t, 0.1, 0.9, 0.2, 1.0);
 
     internal static double EvaluateCloseEase(double t) => EvaluateCubicBezier(t, 0.7, 0.0, 1.0, 0.5);
@@ -192,7 +185,6 @@ internal sealed class NativeVSyncSlideAnimator : IDisposable
         if (x <= 0.0) return 0.0;
         if (x >= 1.0) return 1.0;
 
-        // Solve bezier X(u) = x via Newton-Raphson with binary search fallback.
         double u = x;
         for (int i = 0; i < 6; i++)
         {

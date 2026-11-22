@@ -1,15 +1,16 @@
 using System.Runtime.InteropServices;
-using System.Windows.Interop;
 using DimDock.Interop;
+using DimDock.UI;
 
 namespace DimDock.Services;
 
 public sealed class TrayIconService : IDisposable
 {
     private const uint TrayIconId = 1;
-    private const int WmTrayCallback = NativeMethods.WM_APP + 1;
+    private const uint WmTrayCallback = NativeMethods.WM_APP + 1;
 
-    private readonly HwndSource _messageWindow;
+    private readonly Win32Dispatcher _dispatcher;
+    private readonly Func<IntPtr, uint, IntPtr, IntPtr, (bool Handled, IntPtr Result)> _hook;
     private readonly uint _taskbarCreatedMessage;
     private readonly uint _activateInstanceMessage;
     private readonly Dictionary<int, IntPtr> _iconCache = [];
@@ -21,35 +22,27 @@ public sealed class TrayIconService : IDisposable
     private string _tooltip = "DimDock";
     private bool _disposed;
 
-    public TrayIconService(bool isDarkTaskbar, uint activateInstanceMessage)
+    internal TrayIconService(Win32Dispatcher dispatcher, bool isDarkTaskbar, uint activateInstanceMessage)
     {
+        _dispatcher = dispatcher;
         _isDarkTaskbar = isDarkTaskbar;
         _activateInstanceMessage = activateInstanceMessage;
         _taskbarCreatedMessage = NativeMethods.RegisterWindowMessageW("TaskbarCreated");
 
-        var parameters = new HwndSourceParameters("DimDock_TrayHost")
-        {
-            Width = 0,
-            Height = 0,
-            PositionX = 0,
-            PositionY = 0,
-            WindowStyle = unchecked((int)0x80000000), // WS_POPUP (hidden top-level window so broadcast msgs arrive)
-            ExtendedWindowStyle = NativeMethods.WS_EX_TOOLWINDOW
-        };
-
-        _messageWindow = new HwndSource(parameters);
-        _messageWindow.AddHook(WndProc);
+        _hook = WndProc;
+        _dispatcher.AddMessageHook(_hook);
 
         _currentIconSize = GetTargetIconSize();
         _currentIcon = GetOrCreateIcon(_currentBucket);
         AddOrUpdateIcon(isAdd: true);
     }
 
-    public IntPtr HostHwnd => _messageWindow.Handle;
+    public IntPtr HostHwnd => _dispatcher.HostHwnd;
 
     public event EventHandler? LeftClicked;
     public event EventHandler? RightClicked;
     public event EventHandler? SystemThemeChanged;
+    public event EventHandler? DisplayOrPowerChanged;
     public event EventHandler? ExternalActivateRequested;
 
     public void UpdateStatus(string tooltip, int? brightnessPercent)
@@ -111,7 +104,6 @@ public sealed class TrayIconService : IDisposable
         _isDarkTaskbar = isDarkTaskbar;
         _currentIconSize = nextIconSize;
 
-        // Build the new current icon first, swap it into the tray, then free old cached HICONs.
         var oldIcons = _iconCache.Values.ToList();
         _iconCache.Clear();
 
@@ -144,7 +136,7 @@ public sealed class TrayIconService : IDisposable
         var identifier = new NOTIFYICONIDENTIFIER
         {
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONIDENTIFIER>(),
-            hWnd = _messageWindow.Handle,
+            hWnd = _dispatcher.HostHwnd,
             uID = TrayIconId
         };
 
@@ -172,7 +164,6 @@ public sealed class TrayIconService : IDisposable
 
     private uint GetTaskbarDpi(uint? hintDpi = null)
     {
-        // 1. Prefer the live effective DPI of the monitor actually hosting our tray icon.
         if (_iconAdded && TryGetIconRect(out RECT iconRect))
         {
             var center = new POINT
@@ -187,7 +178,6 @@ public sealed class TrayIconService : IDisposable
             }
         }
 
-        // 2. Otherwise query the primary taskbar's monitor or window DPI directly.
         IntPtr taskbarHwnd = NativeMethods.FindWindowW("Shell_TrayWnd", null);
         if (taskbarHwnd != IntPtr.Zero)
         {
@@ -204,22 +194,20 @@ public sealed class TrayIconService : IDisposable
             }
         }
 
-        // 3. Fall back to the primary monitor's live effective DPI.
         IntPtr primaryMonitor = NativeMethods.MonitorFromPoint(default, NativeMethods.MONITOR_DEFAULTTOPRIMARY);
         if (TryGetMonitorDpi(primaryMonitor, out uint primaryDpi))
         {
             return primaryDpi;
         }
 
-        // 4. Use WM_DPICHANGED hint, message window DPI, or system DPI as final fallbacks.
         if (hintDpi is > 0)
         {
             return hintDpi.Value;
         }
 
-        if (_messageWindow.Handle != IntPtr.Zero)
+        if (_dispatcher.HostHwnd != IntPtr.Zero)
         {
-            uint windowDpi = NativeMethods.GetDpiForWindow(_messageWindow.Handle);
+            uint windowDpi = NativeMethods.GetDpiForWindow(_dispatcher.HostHwnd);
             if (windowDpi > 0)
             {
                 return windowDpi;
@@ -280,14 +268,14 @@ public sealed class TrayIconService : IDisposable
     private NOTIFYICONDATAW CreateBaseData() => new()
     {
         cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
-        hWnd = _messageWindow.Handle,
+        hWnd = _dispatcher.HostHwnd,
         uID = TrayIconId,
         szTip = string.Empty,
         szInfo = string.Empty,
         szInfoTitle = string.Empty
     };
 
-    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    private (bool Handled, IntPtr Result) WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
         if (msg == WmTrayCallback)
         {
@@ -297,12 +285,10 @@ public sealed class TrayIconService : IDisposable
                 case NativeMethods.NIN_SELECT:
                 case NativeMethods.NIN_KEYSELECT:
                     LeftClicked?.Invoke(this, EventArgs.Empty);
-                    handled = true;
-                    break;
+                    return (true, IntPtr.Zero);
                 case NativeMethods.WM_CONTEXTMENU:
                     RightClicked?.Invoke(this, EventArgs.Empty);
-                    handled = true;
-                    break;
+                    return (true, IntPtr.Zero);
             }
         }
         else if (msg == _taskbarCreatedMessage && _taskbarCreatedMessage != 0)
@@ -314,7 +300,7 @@ public sealed class TrayIconService : IDisposable
         else if (msg == _activateInstanceMessage && _activateInstanceMessage != 0)
         {
             ExternalActivateRequested?.Invoke(this, EventArgs.Empty);
-            handled = true;
+            return (true, IntPtr.Zero);
         }
         else if (msg == NativeMethods.WM_DPICHANGED)
         {
@@ -324,13 +310,22 @@ public sealed class TrayIconService : IDisposable
         else if (msg == NativeMethods.WM_DISPLAYCHANGE)
         {
             RefreshScale();
+            DisplayOrPowerChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else if (msg == NativeMethods.WM_POWERBROADCAST)
+        {
+            int powerEvent = wParam.ToInt32();
+            if (powerEvent is NativeMethods.PBT_APMRESUMESUSPEND or NativeMethods.PBT_APMRESUMEAUTOMATIC)
+            {
+                DisplayOrPowerChanged?.Invoke(this, EventArgs.Empty);
+            }
         }
         else if (msg == NativeMethods.WM_SETTINGCHANGE || msg == NativeMethods.WM_DWMCOLORIZATIONCOLORCHANGED)
         {
             SystemThemeChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        return IntPtr.Zero;
+        return (false, IntPtr.Zero);
     }
 
     private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent, int size)
@@ -341,9 +336,6 @@ public sealed class TrayIconService : IDisposable
 
     internal static byte[] RenderSunIconPixels(bool isDarkTaskbar, int brightnessPercent, int size)
     {
-        // Render directly on the CPU via an anti-aliased signed distance field at the live taskbar
-        // small-icon pixel size (16px..48px) so startup never initializes WPF's MIL/WIC graphics stack.
-        // Outputs straight (non-premultiplied) BGRA32 expected by Windows 11's taskbar HICON loader.
         const double invSqrt2 = 0.7071067811865475244;
 
         double s = size / 16.0;
@@ -373,19 +365,15 @@ public sealed class TrayIconService : IDisposable
                 double dx = (px + 0.5) - center;
                 double absX = Math.Abs(dx);
 
-                // Ring SDF
                 double distFromCenter = Math.Sqrt(dx * dx + dy * dy);
                 double d = Math.Abs(distFromCenter - ringRadius) - halfStroke;
 
-                // Exploit 8-fold dihedral symmetry: map into first octant (u >= v >= 0).
                 double u = absX >= absY ? absX : absY;
                 double v = absX >= absY ? absY : absX;
 
-                // Nearest cardinal ray (+X axis in octant) with flat caps
                 double dCardinal = BoxSdf(Math.Abs(u - rayMid) - rayHalfLen, v - halfStroke);
                 if (dCardinal < d) d = dCardinal;
 
-                // Nearest diagonal ray (45 deg axis in octant) with flat caps
                 double diagProj = (u + v) * invSqrt2;
                 double diagPerp = (u - v) * invSqrt2;
                 double dDiagonal = BoxSdf(Math.Abs(diagProj - rayMid) - rayHalfLen, diagPerp - halfStroke);
@@ -398,9 +386,9 @@ public sealed class TrayIconService : IDisposable
                 if (alpha == 0) continue;
 
                 int idx = rowOffset + (px * 4);
-                pixels[idx] = fg;     // B
-                pixels[idx + 1] = fg; // G
-                pixels[idx + 2] = fg; // R
+                pixels[idx] = fg;
+                pixels[idx + 1] = fg;
+                pixels[idx + 2] = fg;
                 pixels[idx + 3] = alpha;
             }
         }
@@ -424,7 +412,7 @@ public sealed class TrayIconService : IDisposable
             {
                 biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
                 biWidth = width,
-                biHeight = -height, // top-down DIB
+                biHeight = -height,
                 biPlanes = 1,
                 biBitCount = 32,
                 biCompression = NativeMethods.BI_RGB
@@ -494,7 +482,6 @@ public sealed class TrayIconService : IDisposable
         _iconCache.Clear();
         _currentIcon = IntPtr.Zero;
 
-        _messageWindow.RemoveHook(WndProc);
-        _messageWindow.Dispose();
+        _dispatcher.RemoveMessageHook(_hook);
     }
 }

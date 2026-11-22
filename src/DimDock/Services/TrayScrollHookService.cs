@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Windows.Threading;
 using DimDock.Interop;
 
 namespace DimDock.Services;
@@ -17,17 +16,17 @@ public sealed class TrayScrollHookService : IDisposable
     ];
 
     private readonly TrayIconService _trayIconService;
-    private readonly Dispatcher _dispatcher;
+    private readonly Action<Action> _beginInvoke;
     private readonly NativeMethods.LowLevelMouseProc _hookProc;
     private readonly char[] _classNameBuffer = new char[128];
     private IntPtr _hookHandle;
     private int _accumulatedDelta;
     private bool _disposed;
 
-    public TrayScrollHookService(TrayIconService trayIconService, Dispatcher dispatcher)
+    public TrayScrollHookService(TrayIconService trayIconService, Action<Action> beginInvoke)
     {
         _trayIconService = trayIconService;
-        _dispatcher = dispatcher;
+        _beginInvoke = beginInvoke;
         _hookProc = HookCallback;
 
         EnsureHookInstalled();
@@ -49,7 +48,6 @@ public sealed class TrayScrollHookService : IDisposable
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        // Fast path: immediately pass through all non-wheel events so cursor movement has zero overhead.
         if (nCode < 0 || wParam != (IntPtr)NativeMethods.WM_MOUSEWHEEL)
         {
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
@@ -71,11 +69,10 @@ public sealed class TrayScrollHookService : IDisposable
                     if (notches != 0)
                     {
                         _accumulatedDelta -= notches * WheelDeltaUnit;
-                        _dispatcher.BeginInvoke(() => TrayScrolled?.Invoke(this, notches));
+                        _beginInvoke(() => TrayScrolled?.Invoke(this, notches));
                     }
                 }
 
-                // Consume the wheel event so the taskbar doesn't act on it.
                 return (IntPtr)1;
             }
         }

@@ -1,13 +1,14 @@
-using System.Windows;
-using System.Windows.Threading;
 using DimDock.Interop;
 using DimDock.Services;
 using DimDock.UI;
-using Microsoft.Win32;
 
 namespace DimDock;
 
-public partial class App : Application
+/// <summary>
+/// Application coordinator replacing WPF's Application class.
+/// Owns the Win32 message loop, services, tray icon, lazy flyout lifecycle, and idle memory trimming.
+/// </summary>
+internal sealed class AppHost : IDisposable
 {
     private const string SingleInstanceMutexName = @"Local\DimDock_SingleInstance_Mutex";
     private const string ActivateMessageName = "DimDock_ActivateExistingInstance";
@@ -18,6 +19,7 @@ public partial class App : Application
     private bool _ownsSingleInstanceMutex;
     private uint _activateMessage;
 
+    private Win32Dispatcher? _dispatcher;
     private SystemThemeService? _themeService;
     private SettingsService? _settingsService;
     private StartupService? _startupService;
@@ -28,34 +30,28 @@ public partial class App : Application
     private TrayScrollHookService? _scrollHookService;
     private FlyoutWindow? _flyoutWindow;
     private TrayContextMenu? _contextMenu;
-    private DispatcherTimer? _rescanDebounceTimer;
-    private DispatcherTimer? _idleTrimTimer;
-    private bool _themeApplied;
-    private bool _lastDwmBackdropActive = true;
+    private Win32Timer? _rescanDebounceTimer;
+    private Win32Timer? _idleTrimTimer;
+    private bool _disposed;
 
-    protected override async void OnStartup(StartupEventArgs e)
+    public void Run()
     {
-        base.OnStartup(e);
-
-        DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
 
         _activateMessage = NativeMethods.RegisterWindowMessageW(ActivateMessageName);
 
-        bool createdNew;
-        _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out createdNew);
+        _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out bool createdNew);
         _ownsSingleInstanceMutex = createdNew;
         if (!createdNew)
         {
-            // Signal the running instance to toggle/show its flyout, then exit cleanly.
             if (_activateMessage != 0)
             {
                 NativeMethods.PostMessageW(NativeMethods.HWND_BROADCAST, _activateMessage, IntPtr.Zero, IntPtr.Zero);
             }
-            Shutdown(0);
             return;
         }
 
+        _dispatcher = new Win32Dispatcher();
         _themeService = new SystemThemeService();
         _settingsService = new SettingsService();
         _startupService = new StartupService();
@@ -64,35 +60,34 @@ public partial class App : Application
         _brightnessController = new BrightnessController(
             _monitorBackend,
             _settingsService,
-            uiInvoke: action => Dispatcher.Invoke(action));
+            uiInvoke: action => _dispatcher.Invoke(action));
 
-        _trayIconService = new TrayIconService(_themeService.Current.IsTaskbarDark, _activateMessage);
-        _scrollHookService = new TrayScrollHookService(_trayIconService, Dispatcher);
+        _trayIconService = new TrayIconService(_dispatcher, _themeService.Current.IsTaskbarDark, _activateMessage);
+        _scrollHookService = new TrayScrollHookService(_trayIconService, _dispatcher.BeginInvoke);
 
         _contextMenu = new TrayContextMenu(
+            _dispatcher,
             _brightnessController,
             _startupService,
             _updateService,
             _trayIconService,
+            _themeService,
             onRefresh: SafeRefreshMonitorsAsync,
             onLinkChanged: () => _flyoutWindow?.SyncUiState(),
-            onExit: ExitApplication);
+            onExit: () => _dispatcher.Shutdown());
 
         _contextMenu.MenuOpened += (_, _) => _idleTrimTimer?.Stop();
         _contextMenu.MenuClosed += (_, _) => ScheduleIdleTrim(IdleTeardownDelay);
 
-        _rescanDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
-        _rescanDebounceTimer.Tick += async (_, _) =>
+        _rescanDebounceTimer = _dispatcher.CreateTimer(TimeSpan.FromMilliseconds(1500), async () =>
         {
-            _rescanDebounceTimer.Stop();
+            _rescanDebounceTimer?.Stop();
             _trayIconService?.RefreshScale();
             await SafeRefreshMonitorsAsync();
-        };
+        });
 
-        _idleTrimTimer = new DispatcherTimer { Interval = IdleTeardownDelay };
-        _idleTrimTimer.Tick += OnIdleTrimTimerTick;
+        _idleTrimTimer = _dispatcher.CreateTimer(IdleTeardownDelay, OnIdleTrimTimerTick);
 
-        // Wire events
         _trayIconService.LeftClicked += (_, _) =>
         {
             if (_flyoutWindow is { IsVisible: true })
@@ -106,13 +101,13 @@ public partial class App : Application
 
         _trayIconService.RightClicked += (_, _) =>
         {
-            EnsureThemeApplied();
             _flyoutWindow?.HideFlyout();
             _contextMenu.ShowAtCursor();
         };
 
         _trayIconService.ExternalActivateRequested += (_, _) => GetOrCreateFlyoutWindow().ShowFlyout();
         _trayIconService.SystemThemeChanged += (_, _) => HandleThemeChanged();
+        _trayIconService.DisplayOrPowerChanged += (_, _) => OnDisplayOrPowerChanged();
 
         _scrollHookService.TrayScrolled += (_, notches) =>
         {
@@ -126,37 +121,31 @@ public partial class App : Application
 
         _updateService.BackgroundCheckCompleted += (_, _) =>
         {
-            Dispatcher.BeginInvoke(() => ScheduleIdleTrim(StartupTrimDelay));
+            _dispatcher.BeginInvoke(() => ScheduleIdleTrim(StartupTrimDelay));
         };
 
-        SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;
-        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        // Kick off initial monitor scan on startup
+        _dispatcher.BeginInvoke(async () =>
+        {
+            await SafeRefreshMonitorsAsync();
+            _trayIconService.UpdateStatus(
+                _brightnessController.FormatTrayTooltip(),
+                _brightnessController.GetTraySummaryPercent());
+            _updateService.StartPeriodicChecks();
+            ScheduleIdleTrim(StartupTrimDelay);
+        });
 
-        await SafeRefreshMonitorsAsync();
-        _trayIconService.UpdateStatus(
-            _brightnessController.FormatTrayTooltip(),
-            _brightnessController.GetTraySummaryPercent());
-        _updateService.StartPeriodicChecks();
-        ScheduleIdleTrim(StartupTrimDelay);
-    }
-
-    private void EnsureThemeApplied()
-    {
-        if (_themeApplied || _themeService is null) return;
-        _themeService.ApplyToApplication(this, useDwmBackdrop: _lastDwmBackdropActive);
-        _themeApplied = true;
+        _dispatcher.RunMessageLoop();
     }
 
     private FlyoutWindow GetOrCreateFlyoutWindow()
     {
-        EnsureThemeApplied();
-
         if (_flyoutWindow is not null)
         {
             return _flyoutWindow;
         }
 
-        var flyout = new FlyoutWindow(_brightnessController!, _trayIconService!, _themeService!);
+        var flyout = new FlyoutWindow(_dispatcher!, _brightnessController!, _trayIconService!, _themeService!);
         flyout.FlyoutShown += (_, _) => _idleTrimTimer?.Stop();
         flyout.FlyoutHidden += (_, _) => ScheduleIdleTrim(IdleTeardownDelay);
         _flyoutWindow = flyout;
@@ -176,7 +165,7 @@ public partial class App : Application
         _idleTrimTimer.Start();
     }
 
-    private void OnIdleTrimTimerTick(object? sender, EventArgs e)
+    private void OnIdleTrimTimerTick()
     {
         _idleTrimTimer?.Stop();
 
@@ -192,7 +181,6 @@ public partial class App : Application
                 return;
             }
 
-            _lastDwmBackdropActive = _flyoutWindow.IsDwmBackdropActive;
             _flyoutWindow.ForceClose();
             _flyoutWindow = null;
         }
@@ -214,62 +202,34 @@ public partial class App : Application
         }
     }
 
-    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
-    {
-        AppLogger.Error("Unhandled UI dispatcher exception", e.Exception);
-    }
-
-    private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
-    {
-        AppLogger.Error($"Unhandled domain exception (terminating={e.IsTerminating})", e.ExceptionObject as Exception);
-    }
-
     private void HandleThemeChanged()
     {
         if (_themeService is null || _trayIconService is null) return;
 
         var snapshot = _themeService.Refresh();
         _trayIconService.UpdateTheme(snapshot.IsTaskbarDark);
-
-        if (_themeApplied)
-        {
-            bool useBackdrop = _flyoutWindow?.IsDwmBackdropActive ?? _lastDwmBackdropActive;
-            _themeService.ApplyToApplication(this, useDwmBackdrop: useBackdrop);
-        }
-
         _flyoutWindow?.ApplyDwmBackdrop();
         _scrollHookService?.EnsureHookInstalled();
     }
 
-    private void OnDisplayOrPowerChanged(object? sender, EventArgs e)
+    private void OnDisplayOrPowerChanged()
     {
-        Dispatcher.BeginInvoke(() =>
-        {
-            _trayIconService?.RefreshScale();
-            _rescanDebounceTimer?.Stop();
-            _rescanDebounceTimer?.Start();
-        });
+        _trayIconService?.RefreshScale();
+        _rescanDebounceTimer?.Stop();
+        _rescanDebounceTimer?.Start();
     }
 
-    private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
+    private static void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
-        if (e.Mode == PowerModes.Resume)
-        {
-            OnDisplayOrPowerChanged(sender, e);
-        }
+        AppLogger.Error($"Unhandled domain exception (terminating={e.IsTerminating})", e.ExceptionObject as Exception);
     }
 
-    private void ExitApplication()
+    public void Dispose()
     {
-        Shutdown(0);
-    }
+        if (_disposed) return;
+        _disposed = true;
 
-    protected override void OnExit(ExitEventArgs e)
-    {
-        DispatcherUnhandledException -= OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException -= OnDomainUnhandledException;
-        SystemEvents.DisplaySettingsChanged -= OnDisplayOrPowerChanged;
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
 
         _updateService?.ApplyPendingUpdateOnExit();
         _updateService?.Dispose();
@@ -281,21 +241,14 @@ public partial class App : Application
         _trayIconService?.Dispose();
         _brightnessController?.Dispose();
         _monitorBackend?.Dispose();
+        _dispatcher?.Dispose();
 
         if (_ownsSingleInstanceMutex)
         {
-            try
-            {
-                _singleInstanceMutex?.ReleaseMutex();
-            }
-            catch (ApplicationException)
-            {
-                // Mutex was not owned by this instance.
-            }
+            try { _singleInstanceMutex?.ReleaseMutex(); }
+            catch (ApplicationException) { }
             _ownsSingleInstanceMutex = false;
         }
         _singleInstanceMutex?.Dispose();
-
-        base.OnExit(e);
     }
 }
