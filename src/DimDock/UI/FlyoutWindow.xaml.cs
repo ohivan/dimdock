@@ -455,7 +455,13 @@ public partial class FlyoutWindow : Window
         slider.ApplyTemplate();
 
         // .NET 10's built-in Fluent Slider gives the 20x20 Thumb's outer Border Margin="-2" (making it 24x24).
-        // Zeroing that margin brings it to Windows 11 Quick Settings' exact 20x20 thumb diameter.
+        // Zeroing that margin brings it to Windows 11 Quick Settings' exact 20x20 thumb diameter,
+        // and insetting TrackBackground by 2px keeps the track ends tucked cleanly behind the thumb at 0 and 100.
+        if (slider.Template.FindName("TrackBackground", slider) is Border trackBg)
+        {
+            trackBg.Margin = new Thickness(2, 0, 2, 0);
+        }
+
         if (slider.Template.FindName("PART_Track", slider) is Track track &&
             track.Thumb is { } thumb)
         {
