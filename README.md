@@ -17,8 +17,7 @@ Windows 11 system tray utility for controlling external monitor brightness over 
 > None of the code in this repository was written by hand; the project was built entirely with Gemini 4 Neon.
 
 <p align="left">
-  <img src="web/public/screenshot-flyout.png" alt="Brightness flyout" height="230" />
-  <img src="web/public/screenshot-menu.png" alt="Tray context menu" height="230" />
+  <img src=".github/demo.webp" alt="Dim Dock demo showing the Windows 11 brightness flyout, tray icon scrolling, and native tray context menu" width="760" />
 </p>
 
 ## Overview
