@@ -262,6 +262,25 @@ public partial class FlyoutWindow : Window
         }
     }
 
+    private void OnSliderLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Slider slider) return;
+        slider.ApplyTemplate();
+
+        // .NET 10's built-in Fluent Slider gives the 20x20 Thumb's outer Border Margin="-2" (making it 24x24).
+        // Zeroing that margin brings it to Windows 11 Quick Settings' exact 20x20 thumb diameter.
+        if (slider.Template.FindName("PART_Track", slider) is Track track &&
+            track.Thumb is { } thumb)
+        {
+            thumb.ApplyTemplate();
+            if (VisualTreeHelper.GetChildrenCount(thumb) > 0 &&
+                VisualTreeHelper.GetChild(thumb, 0) is Border outerBorder)
+            {
+                outerBorder.Margin = new Thickness(0);
+            }
+        }
+    }
+
     private void OnSliderPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Slider slider || slider.Template.FindName("PART_Track", slider) is not Track track || track.Thumb is null)

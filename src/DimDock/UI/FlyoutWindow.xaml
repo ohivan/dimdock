@@ -87,6 +87,7 @@
                                                     IsMoveToPointEnabled="True"
                                                     VerticalAlignment="Center"
                                                     Value="{Binding Brightness, Mode=OneWay}"
+                                                    Loaded="OnSliderLoaded"
                                                     PreviewMouseLeftButtonDown="OnSliderPreviewMouseLeftButtonDown"
                                                     ValueChanged="OnSliderValueChanged" />
 
