@@ -36,12 +36,12 @@
                 <ScrollViewer MaxHeight="420"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <Grid Margin="20,18,20,6">
+                    <Grid Margin="20,18,20,0">
                         <!-- Populated Monitor Rows -->
                         <ItemsControl x:Name="MonitorsList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,0,0,16"
+                                    <Grid Margin="0,0,0,12"
                                           Background="Transparent"
                                           PreviewMouseWheel="OnMonitorRowMouseWheel">
                                         <Grid.RowDefinitions>
@@ -52,7 +52,7 @@
                                         <!-- Monitor Icon + Name -->
                                         <StackPanel Grid.Row="0"
                                                     Orientation="Horizontal"
-                                                    Margin="0,0,0,8">
+                                                    Margin="0,0,0,4">
                                             <TextBlock Text="&#xE7F4;"
                                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                                        FontSize="20"
@@ -94,6 +94,7 @@
                                                        Foreground="{DynamicResource DimTextPrimaryBrush}"
                                                        HorizontalAlignment="Right"
                                                        VerticalAlignment="Center"
+                                                       Margin="0,0,0,1"
                                                        Typography.NumeralAlignment="Tabular" />
                                         </Grid>
                                     </Grid>
@@ -150,7 +151,8 @@
                                Text="Adjust Brightness"
                                FontSize="13"
                                Foreground="{DynamicResource DimTextSecondaryBrush}"
-                               VerticalAlignment="Center" />
+                               VerticalAlignment="Center"
+                               Margin="0,0,0,2" />
 
                     <ToggleButton x:Name="LinkToggleButton"
                                   Grid.Column="1"
