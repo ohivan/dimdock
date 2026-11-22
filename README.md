@@ -1,4 +1,4 @@
-# DimDock
+# Dim Dock
 
 [![Latest Release](https://img.shields.io/github/v/release/ohivan/dimdock?label=release)](https://github.com/ohivan/dimdock/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/ohivan/dimdock/total)](https://github.com/ohivan/dimdock/releases)
@@ -11,7 +11,7 @@ Windows 11 system tray utility for controlling external monitor brightness over 
 **Website:** [dimdock.app](https://dimdock.app)
 
 > [!NOTE]
-> **External monitors only:** DimDock is for desktop setups with external DDC/CI monitors and does not control built-in laptop displays.
+> **External monitors only:** Dim Dock is for desktop setups with external DDC/CI monitors and does not control built-in laptop displays.
 
 > [!NOTE]
 > None of the code in this repository was written by hand; the project was built entirely with Gemini 4 Neon.
@@ -56,7 +56,7 @@ dotnet run --project src/DimDock
 ## Troubleshooting
 
 - **Monitor not detected**: Verify **DDC/CI** is enabled in the monitor's OSD settings. Some HDMI/DisplayPort docks or KVMs block I2C/DDC traffic.
-- **Laptop screen not listed**: DimDock only supports external DDC/CI monitors, not built-in laptop displays.
+- **Laptop screen not listed**: Dim Dock only supports external DDC/CI monitors, not built-in laptop displays.
 - **Settings**: `%LocalAppData%\DimDock\settings.json`
 - **Log**: `%LocalAppData%\DimDock\dimdock.log`
 

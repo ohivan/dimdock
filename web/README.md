@@ -1,6 +1,6 @@
-# DimDock Website
+# Dim Dock Website
 
-Static WinUI 3-styled landing page for [DimDock](https://github.com/ohivan/dimdock). Zero framework dependencies and zero build step — ready for Cloudflare Workers (Static Assets) or Cloudflare Pages.
+Static WinUI 3-styled landing page for [Dim Dock](https://github.com/ohivan/dimdock). Zero framework dependencies and zero build step, ready for Cloudflare Workers (Static Assets) or Cloudflare Pages.
 
 ## Local Preview
 

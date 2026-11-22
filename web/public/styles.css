@@ -877,58 +877,27 @@ html.is-scrolled .scroll-progress {
   color: var(--text-secondary);
 }
 
-/* Real App Screenshots Grid */
-.screenshots-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  align-items: stretch;
+/* Looping App Demo Video */
+.demo-card {
+  padding: 20px;
 }
 
-.screenshot-card {
-  margin: 0;
-  padding: 24px;
+.demo-video-frame {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.screenshot-card-head h3 {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.screenshot-card-head p {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--text-secondary);
-}
-
-.screenshot-frame {
-  display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  flex: 1;
 }
 
-.screenshot-frame img {
+.demo-video-frame video {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
+  background: #070f18;
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.28);
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms ease, border-color 240ms ease;
-}
-
-.screenshot-card:hover .screenshot-frame img {
-  transform: translateY(-3px) scale(1.01);
-  border-color: rgba(255, 255, 255, 0.30);
-  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.52), 0 6px 16px rgba(0, 0, 0, 0.32);
+  transition: opacity 640ms cubic-bezier(0.16, 1, 0.3, 1), transform 680ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 320ms ease, border-color 240ms ease;
 }
 
 /* Authentic DimDock WinUI 3 Acrylic Flyout */
@@ -1436,6 +1405,8 @@ html.is-scrolled .scroll-progress {
 .install-card,
 .req-card {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
 .install-card-head {
@@ -1505,6 +1476,29 @@ html.is-scrolled .scroll-progress {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.install-block:last-of-type {
+  margin-bottom: 18px;
+}
+
+.install-note {
+  margin: auto 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--stroke-divider);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.install-note a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.install-note a:hover {
+  color: var(--text-primary);
 }
 
 /* WinUI 3 Buttons (used inside Install card) */
@@ -1591,68 +1585,101 @@ html.is-scrolled .scroll-progress {
 /* Memory Benchmark Section */
 .benchmark-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   align-items: stretch;
 }
 
-.benchmark-bars-card,
-.benchmark-summary-card {
-  padding: 24px;
+.benchmark-card {
+  padding: 28px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
 }
 
-.benchmark-summary-card h3 {
-  margin: 0 0 16px;
-  font-size: 16px;
+.benchmark-card:hover {
+  background: rgba(16, 40, 62, 0.28);
+  box-shadow: inset 0 0 0 0.5px rgba(76, 194, 255, 0.22);
+}
+
+.benchmark-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.benchmark-label {
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
 }
 
-.metric-group {
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: rgba(7, 15, 24, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.benchmark-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(76, 194, 255, 0.28);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.metric-group + .metric-group {
-  margin-top: 12px;
+.benchmark-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.metric-header {
+.benchmark-hero-val {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 4.4vw, 46px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.benchmark-hero-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.benchmark-bars {
+  padding-top: 18px;
+  border-top: 1px solid var(--stroke-divider);
+}
+
+.bar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bar-stack + .bar-stack {
+  margin-top: 14px;
+}
+
+.bar-stack-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
-}
-
-.metric-title {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.metric-sub {
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.bar-row {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1fr) 74px 46px;
-  align-items: center;
-  gap: 12px;
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
-}
-
-.bar-row + .bar-row {
-  margin-top: 10px;
 }
 
 .bar-name {
@@ -1712,56 +1739,28 @@ html.is-scrolled .scroll-progress {
   font-weight: 600;
 }
 
-.bar-mult {
-  text-align: right;
-  color: var(--text-muted);
-  white-space: nowrap;
+.benchmark-footer {
+  grid-column: 1 / -1;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
 }
 
 .benchmark-note {
-  margin: auto 0 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--stroke-divider);
-  font-size: 11.5px;
-  line-height: 1.55;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 
-.benchmark-note code {
+.benchmark-footnote-meta {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-secondary);
-}
-
-.install-size-group {
-  margin-bottom: 18px;
-}
-
-.bar-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bar-stack + .bar-stack {
-  margin-top: 11px;
-}
-
-.bar-stack-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.3;
   font-variant-numeric: tabular-nums;
-}
-
-.bar-stack-nums {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
 }
 
 /* Footer */
@@ -1834,11 +1833,14 @@ html.is-scrolled .scroll-progress {
 /* Responsive */
 @media (max-width: 920px) {
   .hero-grid,
-  .screenshots-grid,
-  .benchmark-grid,
   .install-grid {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+
+  .benchmark-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
 
   .hero-screenshot-wrap {
@@ -1872,6 +1874,10 @@ html.is-scrolled .scroll-progress {
     padding: 76px 0 88px;
   }
 
+  .demo-card {
+    padding: 12px;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
   }
@@ -1884,10 +1890,13 @@ html.is-scrolled .scroll-progress {
     display: none;
   }
 
-  .bar-row {
-    grid-template-columns: 92px minmax(0, 1fr) 66px 40px;
-    gap: 8px;
-    font-size: 12px;
+  .benchmark-card {
+    padding: 22px 20px;
+    gap: 20px;
+  }
+
+  .benchmark-footer {
+    padding: 14px 20px;
   }
 
   .pixel-bar {
@@ -2072,14 +2081,15 @@ html.anim-ready [data-reveal-surface].is-revealed [data-reveal-item] {
   transform: translate3d(0, 0, 0);
 }
 
-/* Screenshot images settle smoothly inside revealed cards */
-html.anim-ready .screenshots-grid:not(.is-revealed) .screenshot-frame img {
+/* Demo video settles smoothly inside revealed surface */
+html.anim-ready .demo-surface:not(.is-revealed) .demo-video-frame video {
   opacity: 0;
-  transform: translate3d(0, 14px, 0) scale(0.982);
+  transform: translate3d(0, 14px, 0) scale(0.988);
 }
 
-html.anim-ready .screenshots-grid.is-revealed .screenshot-frame img {
+html.anim-ready .demo-surface.is-revealed .demo-video-frame video {
   opacity: 1;
+  transform: none;
 }
 
 /* Feature icons pop gently as cards arrive */
@@ -2100,20 +2110,7 @@ html.anim-ready .features-grid.is-revealed .feature-card:hover .feature-icon {
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), filter 240ms ease;
 }
 
-/* Memory benchmark metric groups, bars, multipliers & process tiles */
-html.anim-ready .benchmark-grid .metric-group {
-  opacity: 0;
-  transform: translate3d(0, 14px, 0);
-  transition:
-    opacity 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--metric-delay, 0ms),
-    transform 620ms cubic-bezier(0.16, 1, 0.3, 1) var(--metric-delay, 0ms);
-}
-
-html.anim-ready .benchmark-grid.is-revealed .metric-group {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
+/* Memory benchmark bars & badges */
 html.anim-ready .benchmark-grid .pixel-bar-cell.is-filled::after {
   opacity: 0;
   transition: opacity 80ms steps(1, end) calc(var(--bar-delay, 0ms) + var(--cell-idx, 0) * 14ms);
@@ -2123,17 +2120,17 @@ html.anim-ready .benchmark-grid.is-revealed .pixel-bar-cell.is-filled::after {
   opacity: 1;
 }
 
-html.anim-ready .benchmark-grid .bar-mult {
+html.anim-ready .benchmark-grid .benchmark-badge {
   opacity: 0;
-  transform: translate3d(-5px, 0, 0);
+  transform: translate3d(0, 4px, 0) scale(0.95);
   transition:
     opacity 420ms ease var(--mult-delay, 460ms),
     transform 460ms cubic-bezier(0.16, 1, 0.3, 1) var(--mult-delay, 460ms);
 }
 
-html.anim-ready .benchmark-grid.is-revealed .bar-mult {
+html.anim-ready .benchmark-grid.is-revealed .benchmark-badge {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 /* Settings list cascade inside revealed cards */

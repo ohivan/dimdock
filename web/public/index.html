@@ -3,39 +3,39 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DimDock — External Monitor Brightness Control for Windows 11</title>
+  <title>Dim Dock</title>
   <meta name="description" content="Lightweight, open-source Windows 11 system tray utility for hardware DDC/CI monitor brightness control with a native Fluent flyout, tray scrolling, and multi-monitor sync." />
   <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#0b1622" />
   <link rel="canonical" href="https://dimdock.app/" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="DimDock" />
+  <meta property="og:site_name" content="Dim Dock" />
   <meta property="og:url" content="https://dimdock.app/" />
-  <meta property="og:title" content="DimDock — External Monitor Brightness Control for Windows 11" />
+  <meta property="og:title" content="Dim Dock" />
   <meta property="og:description" content="Control real hardware DDC/CI brightness from your Windows 11 taskbar with a native Quick Settings flyout, scroll-wheel dimming, and multi-monitor sync." />
   <meta property="og:image" content="https://dimdock.app/app-screen.png" />
   <meta property="og:image:width" content="848" />
   <meta property="og:image:height" content="364" />
-  <meta property="og:image:alt" content="DimDock Windows 11 brightness flyout preview" />
+  <meta property="og:image:alt" content="Dim Dock Windows 11 brightness flyout preview" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="DimDock — External Monitor Brightness Control for Windows 11" />
+  <meta name="twitter:title" content="Dim Dock" />
   <meta name="twitter:description" content="Control real hardware DDC/CI brightness from your Windows 11 taskbar with a native Quick Settings flyout, scroll-wheel dimming, and multi-monitor sync." />
   <meta name="twitter:image" content="https://dimdock.app/app-screen.png" />
-  <meta name="twitter:image:alt" content="DimDock Windows 11 brightness flyout preview" />
+  <meta name="twitter:image:alt" content="Dim Dock Windows 11 brightness flyout preview" />
 
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=2" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..800&display=swap" rel="stylesheet" />
   <script src="./anim-init.js?v=3"></script>
-  <link rel="stylesheet" href="./styles.css?v=3" />
+  <link rel="stylesheet" href="./styles.css?v=4" />
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "DimDock",
+      "name": "Dim Dock",
       "url": "https://dimdock.app/",
       "description": "Lightweight, open-source Windows 11 system tray utility for hardware DDC/CI external monitor brightness control with a native Fluent flyout, tray icon scrolling, and multi-monitor sync.",
       "operatingSystem": "Windows 11",
@@ -70,7 +70,7 @@
 
       <div class="container hero-grid">
         <div class="hero-copy">
-          <h1 class="hero-title">DimDock</h1>
+          <h1 class="hero-title">Dim Dock</h1>
           <p class="hero-subtitle">Effortless monitor brightness for Windows 11.</p>
           <p class="hero-desc">
             Ditch the monitor buttons. Control real DDC/CI brightness from your taskbar with a
@@ -140,7 +140,7 @@
             class="dim-flyout hero-flyout"
             id="hero-flyout"
             role="region"
-            aria-label="DimDock Windows 11 brightness flyout preview with three monitors"
+            aria-label="Dim Dock Windows 11 brightness flyout preview with three monitors"
           >
             <div class="hero-flyout-sheen" aria-hidden="true"></div>
 
@@ -273,38 +273,23 @@
           </p>
         </div>
 
-        <div class="screenshots-grid" data-pixel-surface data-reveal data-reveal-surface>
-          <figure class="fluent-card screenshot-card" data-reveal-item style="--reveal-delay: 60ms">
-            <div class="screenshot-card-head">
-              <h3>Brightness Flyout</h3>
-              <p>Instant DDC/CI sliders anchored directly above the Windows 11 taskbar.</p>
+        <div class="demo-surface" data-pixel-surface data-reveal data-reveal-surface>
+          <div class="fluent-card demo-card" data-reveal-item style="--reveal-delay: 60ms">
+            <div class="demo-video-frame">
+              <video
+                src="./demo.mp4"
+                width="1280"
+                height="720"
+                autoplay
+                loop
+                muted
+                playsinline
+                disablepictureinpicture
+                preload="auto"
+                aria-label="Dim Dock demo showing the Windows 11 brightness flyout, tray icon scroll-wheel dimming, and native tray context menu"
+              ></video>
             </div>
-            <div class="screenshot-frame">
-              <img
-                src="./screenshot-flyout.png"
-                alt="DimDock brightness flyout anchored above the Windows 11 taskbar showing MAG 271QPX E2 at 100%"
-                width="469"
-                height="300"
-                loading="lazy"
-              />
-            </div>
-          </figure>
-
-          <figure class="fluent-card screenshot-card" data-reveal-item style="--reveal-delay: 160ms">
-            <div class="screenshot-card-head">
-              <h3>Native Tray Context Menu</h3>
-              <p>Animated WinUI 3 pill toggles, scroll target, scroll step, and built-in updates.</p>
-            </div>
-            <div class="screenshot-frame">
-              <img
-                src="./screenshot-menu.png"
-                alt="DimDock Windows 11 tray context menu with Start with Windows, Link All Monitors, Tray Scroll Target, Scroll Step, Refresh Monitors, Check for Updates, and Exit DimDock"
-                width="414"
-                height="410"
-                loading="lazy"
-              />
-            </div>
-          </figure>
+          </div>
         </div>
       </div>
     </section>
@@ -343,7 +328,7 @@
               <span class="feature-index" aria-hidden="true">02</span>
             </div>
             <h3>Scroll on the Tray Icon</h3>
-            <p>Hover the DimDock taskbar icon and roll your mouse wheel to step brightness by 1%, 2%, 5%, or 10%.</p>
+            <p>Hover the Dim Dock taskbar icon and roll your mouse wheel to step brightness by 1%, 2%, 5%, or 10%.</p>
           </article>
 
           <article class="fluent-card feature-card" data-reveal-item style="--reveal-delay: 150ms">
@@ -410,107 +395,75 @@
       <div class="container">
         <div class="section-head" data-reveal>
           <h2>Light on your PC, all day long.</h2>
-          <p>DimDock is built natively for Windows instead of wrapping a hidden web browser, so it uses a fraction of the memory and disk space of Twinkle Tray.</p>
+          <p>Dim Dock is built natively for Windows instead of wrapping a hidden web browser, so it uses a fraction of the memory and disk space of Twinkle Tray.</p>
         </div>
 
         <div class="benchmark-grid" data-pixel-surface data-reveal data-reveal-surface data-benchmark-animate>
-          <div class="fluent-card benchmark-bars-card" data-reveal-item style="--reveal-delay: 50ms">
-            <div class="metric-group" style="--metric-delay: 80ms">
-              <div class="metric-header">
-                <span class="metric-title">Active RAM <span class="metric-sub">(shown in Task Manager)</span></span>
-              </div>
-              <div class="bar-row is-dimdock">
-                <span class="bar-name is-dimdock">DimDock</span>
-                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0045" style="--bar-delay: 140ms" role="img" aria-label="DimDock active RAM: 0.6 MB"></div>
-                <span class="bar-val is-dimdock" data-count-to="0.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="140">0.6 MB</span>
-                <span class="bar-mult" aria-hidden="true"></span>
-              </div>
-              <div class="bar-row">
-                <span class="bar-name">Twinkle Tray</span>
-                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 200ms" role="img" aria-label="Twinkle Tray active RAM: 134.2 MB"></div>
-                <span class="bar-val" data-count-to="134.2" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="200">134.2 MB</span>
-                <span class="bar-mult" style="--mult-delay: 540ms">224x</span>
-              </div>
+          <article class="fluent-card benchmark-card" data-reveal-item style="--reveal-delay: 50ms">
+            <div class="benchmark-card-top">
+              <span class="benchmark-label">Idle RAM</span>
+              <span class="benchmark-badge" style="--mult-delay: 460ms">224&times; less</span>
             </div>
 
-            <div class="metric-group" style="--metric-delay: 160ms">
-              <div class="metric-header">
-                <span class="metric-title">Reserved RAM <span class="metric-sub">(memory set aside by Windows)</span></span>
-              </div>
-              <div class="bar-row is-dimdock">
-                <span class="bar-name is-dimdock">DimDock</span>
-                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0465" style="--bar-delay: 220ms" role="img" aria-label="DimDock reserved RAM: 14.7 MB"></div>
-                <span class="bar-val is-dimdock" data-count-to="14.7" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="220">14.7 MB</span>
-                <span class="bar-mult" aria-hidden="true"></span>
-              </div>
-              <div class="bar-row">
-                <span class="bar-name">Twinkle Tray</span>
-                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 280ms" role="img" aria-label="Twinkle Tray reserved RAM: 316.1 MB"></div>
-                <span class="bar-val" data-count-to="316.1" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="280">316.1 MB</span>
-                <span class="bar-mult" style="--mult-delay: 620ms">21.5x</span>
-              </div>
+            <div class="benchmark-hero">
+              <span class="benchmark-hero-val" data-count-to="0.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="120">0.6 MB</span>
+              <p class="benchmark-hero-desc">Active memory in Task Manager while sitting in the tray.</p>
             </div>
 
-            <div class="metric-group" style="--metric-delay: 240ms">
-              <div class="metric-header">
-                <span class="metric-title">Total Memory Used <span class="metric-sub">(including shared Windows files)</span></span>
-              </div>
-              <div class="bar-row is-dimdock">
-                <span class="bar-name is-dimdock">DimDock</span>
-                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0021" style="--bar-delay: 300ms" role="img" aria-label="DimDock total memory used: 1.0 MB"></div>
-                <span class="bar-val is-dimdock" data-count-to="1.0" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="300">1.0 MB</span>
-                <span class="bar-mult" aria-hidden="true"></span>
-              </div>
-              <div class="bar-row">
-                <span class="bar-name">Twinkle Tray</span>
-                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 360ms" role="img" aria-label="Twinkle Tray total memory used: 484.8 MB"></div>
-                <span class="bar-val" data-count-to="484.8" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="360">484.8 MB</span>
-                <span class="bar-mult" style="--mult-delay: 700ms">485x</span>
-              </div>
-            </div>
-
-            <p class="benchmark-note">
-              Average of 5 measurements on Windows 11 while both apps sat idle in the system tray
-              (DimDock v1.0.2 vs. Twinkle Tray v1.17.2).
-            </p>
-          </div>
-
-          <div class="fluent-card benchmark-summary-card" data-reveal-item style="--reveal-delay: 150ms">
-            <h3>Why It&rsquo;s So Light</h3>
-
-            <div class="metric-group install-size-group" style="--metric-delay: 140ms">
-              <div class="metric-header">
-                <span class="metric-title">Install Size <span class="metric-sub">(on disk)</span></span>
-              </div>
+            <div class="benchmark-bars">
               <div class="bar-stack is-dimdock">
                 <div class="bar-stack-meta">
-                  <span class="bar-name is-dimdock">DimDock</span>
-                  <span class="bar-val is-dimdock" data-count-to="7.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="180">7.6 MB</span>
+                  <span class="bar-name is-dimdock">Dim Dock</span>
+                  <span class="bar-val is-dimdock" data-count-to="0.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="140">0.6 MB</span>
                 </div>
-                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0256" style="--bar-delay: 180ms" role="img" aria-label="DimDock installed size: 7.6 MB"></div>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0045" style="--bar-delay: 140ms" role="img" aria-label="Dim Dock active RAM: 0.6 MB"></div>
               </div>
+
               <div class="bar-stack">
                 <div class="bar-stack-meta">
                   <span class="bar-name">Twinkle Tray</span>
-                  <span class="bar-stack-nums">
-                    <span class="bar-val" data-count-to="297" data-count-decimals="0" data-count-suffix=" MB" data-count-delay="240">297 MB</span>
-                    <span class="bar-mult" style="--mult-delay: 600ms">39x</span>
-                  </span>
+                  <span class="bar-val" data-count-to="134.2" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="200">134.2 MB</span>
                 </div>
-                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 240ms" role="img" aria-label="Twinkle Tray installed size: 297 MB"></div>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 200ms" role="img" aria-label="Twinkle Tray active RAM: 134.2 MB"></div>
               </div>
             </div>
+          </article>
 
-            <ul class="settings-list">
-              <li>
-                <span class="settings-key">Native vs. browser</span>
-                <span class="settings-val">Single native Win32 binary &mdash; no bundled Chromium engine</span>
-              </li>
-              <li>
-                <span class="settings-key">Saved at idle &amp; on disk</span>
-                <span class="settings-val">133.6 MB less active RAM &middot; 13.1 MB installer (vs. 88.1 MB)</span>
-              </li>
-            </ul>
+          <article class="fluent-card benchmark-card" data-reveal-item style="--reveal-delay: 140ms">
+            <div class="benchmark-card-top">
+              <span class="benchmark-label">Install Size</span>
+              <span class="benchmark-badge" style="--mult-delay: 540ms">39&times; smaller</span>
+            </div>
+
+            <div class="benchmark-hero">
+              <span class="benchmark-hero-val" data-count-to="7.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="180">7.6 MB</span>
+              <p class="benchmark-hero-desc">Single native Win32 binary with no bundled browser engine.</p>
+            </div>
+
+            <div class="benchmark-bars">
+              <div class="bar-stack is-dimdock">
+                <div class="bar-stack-meta">
+                  <span class="bar-name is-dimdock">Dim Dock</span>
+                  <span class="bar-val is-dimdock" data-count-to="7.6" data-count-decimals="1" data-count-suffix=" MB" data-count-delay="200">7.6 MB</span>
+                </div>
+                <div class="pixel-bar is-dimdock" data-pixel-bar data-ratio="0.0256" style="--bar-delay: 200ms" role="img" aria-label="Dim Dock installed size: 7.6 MB"></div>
+              </div>
+
+              <div class="bar-stack">
+                <div class="bar-stack-meta">
+                  <span class="bar-name">Twinkle Tray</span>
+                  <span class="bar-val" data-count-to="297" data-count-decimals="0" data-count-suffix=" MB" data-count-delay="260">297 MB</span>
+                </div>
+                <div class="pixel-bar is-twinkle" data-pixel-bar data-ratio="1" style="--bar-delay: 260ms" role="img" aria-label="Twinkle Tray installed size: 297 MB"></div>
+              </div>
+            </div>
+          </article>
+
+          <div class="fluent-card benchmark-footer" data-reveal-item style="--reveal-delay: 210ms">
+            <p class="benchmark-note">
+              Average of 5 idle runs on Windows 11 &middot; Dim Dock v1.0.2 vs. Twinkle Tray v1.17.2
+            </p>
+            <span class="benchmark-footnote-meta">13.1 MB installer vs. 88.1 MB</span>
           </div>
         </div>
       </div>
@@ -519,7 +472,7 @@
     <section class="section" id="install">
       <div class="container">
         <div class="section-head" data-reveal>
-          <h2>Get DimDock</h2>
+          <h2>Get Dim Dock</h2>
           <p>Install via WinGet in one line or grab the latest release directly from GitHub.</p>
         </div>
 
@@ -531,7 +484,7 @@
             </div>
 
             <div class="install-block">
-              <span class="install-step-label">Option 1 — Windows Package Manager (WinGet)</span>
+              <span class="install-step-label">Option 1: Windows Package Manager (WinGet)</span>
               <div class="winget-command-row">
                 <div class="winget-sweep" aria-hidden="true"></div>
                 <span class="winget-prompt" aria-hidden="true">&gt;</span>
@@ -560,7 +513,7 @@
             </div>
 
             <div class="install-block">
-              <span class="install-step-label">Option 2 — Direct Download</span>
+              <span class="install-step-label">Option 2: Direct Download</span>
               <div class="install-actions">
                 <a
                   class="btn btn-accent"
@@ -585,6 +538,10 @@
                 </a>
               </div>
             </div>
+
+            <p class="install-note">
+              Free &amp; open source under <a href="https://github.com/ohivan/dimdock/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a> &middot; Zero telemetry
+            </p>
           </div>
 
           <div class="fluent-card req-card" data-reveal-item style="--reveal-delay: 150ms">
@@ -599,8 +556,8 @@
                 <span class="settings-val">External desktop monitors with DDC/CI enabled (not laptop screens)</span>
               </li>
               <li>
-                <span class="settings-key">Privacy &amp; License</span>
-                <span class="settings-val">Zero telemetry &middot; Open source under MIT</span>
+                <span class="settings-key">Runtime</span>
+                <span class="settings-val">Self-contained native binary (no .NET runtime required)</span>
               </li>
             </ul>
           </div>
@@ -612,7 +569,7 @@
   <footer class="footer" data-pixel-surface data-reveal>
     <div class="container footer-inner">
       <div class="footer-left">
-        <span class="brand-wordmark">DimDock</span>
+        <span class="brand-wordmark">Dim Dock</span>
         <span class="footer-meta">by <a href="https://github.com/ohivan" target="_blank" rel="noopener noreferrer">ohivan</a></span>
       </div>
       <a
@@ -620,7 +577,7 @@
         href="https://github.com/ohivan/dimdock"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="DimDock on GitHub"
+        aria-label="Dim Dock on GitHub"
       >
         <svg viewBox="0 0 20 20" width="22" height="22" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M10 2C5.58 2 2 5.58 2 10c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 18 10c0-4.42-3.58-8-8-8Z" />
