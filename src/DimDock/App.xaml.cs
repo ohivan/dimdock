@@ -95,16 +95,18 @@ public partial class App : Application
             _brightnessController.StepTrayBrightness(notches);
         };
 
-        _brightnessController.BrightnessSummaryChanged += (_, _) =>
+        _brightnessController.BrightnessSummaryChanged += (_, summary) =>
         {
-            _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
+            _trayIconService.UpdateStatus(_brightnessController.FormatTrayTooltip(), summary);
         };
 
         SystemEvents.DisplaySettingsChanged += OnDisplayOrPowerChanged;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
 
         await _brightnessController.RefreshMonitorsAsync();
-        _trayIconService.UpdateTooltip(_brightnessController.FormatTrayTooltip());
+        _trayIconService.UpdateStatus(
+            _brightnessController.FormatTrayTooltip(),
+            _brightnessController.GetTraySummaryPercent());
     }
 
     private void HandleThemeChanged()

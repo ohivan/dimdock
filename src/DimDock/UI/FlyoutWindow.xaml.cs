@@ -472,25 +472,13 @@ public partial class FlyoutWindow : Window
         double h = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 145);
         const double margin = 12.0;
 
-        // True overflow detection that works with both normal and auto-hide taskbars:
-        // if the tray icon rect sits outside the taskbar rect, it is inside the overflow dock.
-        bool isInOverflow = false;
-        if (hasTrayRect && hasTaskbarRect)
-        {
-            isInOverflow = isTaskbarAtTop
-                ? trayRect.Top >= taskbarRect.Bottom
-                : trayRect.Bottom <= taskbarRect.Top;
-        }
-
         double targetTop = isTaskbarAtTop
             ? effectiveTop + margin
             : effectiveBottom - h - margin;
 
-        double targetLeft = (!hasTrayRect || isInOverflow)
-            ? workRight - w - margin
-            : (anchorPx.X / scale) - (w / 2.0);
-
-        targetLeft = Math.Clamp(targetLeft, workLeft + margin, Math.Max(workLeft + margin, workRight - w - margin));
+        // Always anchor bottom-right (12px from right edge) to match Windows 11 Control Center
+        // consistently whether DimDock is pinned on the taskbar or opened from the overflow dock.
+        double targetLeft = Math.Max(workLeft + margin, workRight - w - margin);
 
         int targetYPx = (int)Math.Round(targetTop * scale);
         int slideDistancePx;

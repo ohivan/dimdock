@@ -15,7 +15,9 @@ public sealed class TrayIconService : IDisposable
     private readonly HwndSource _messageWindow;
     private readonly uint _taskbarCreatedMessage;
     private readonly uint _activateInstanceMessage;
-    private IntPtr _hIcon;
+    private readonly Dictionary<int, IntPtr> _iconCache = [];
+    private IntPtr _currentIcon;
+    private int _currentBucket = 50;
     private bool _iconAdded;
     private bool _isDarkTaskbar;
     private string _tooltip = "DimDock";
@@ -40,7 +42,7 @@ public sealed class TrayIconService : IDisposable
         _messageWindow = new HwndSource(parameters);
         _messageWindow.AddHook(WndProc);
 
-        _hIcon = CreateSunIcon(_isDarkTaskbar);
+        _currentIcon = GetOrCreateIcon(_currentBucket);
         AddOrUpdateIcon(isAdd: true);
     }
 
@@ -51,17 +53,42 @@ public sealed class TrayIconService : IDisposable
     public event EventHandler? SystemThemeChanged;
     public event EventHandler? ExternalActivateRequested;
 
-    public void UpdateTooltip(string tooltip)
+    public void UpdateStatus(string tooltip, int? brightnessPercent)
     {
         if (_disposed) return;
+
         string trimmed = tooltip.Length > 127 ? tooltip[..127] : tooltip;
-        if (string.Equals(_tooltip, trimmed, StringComparison.Ordinal)) return;
+        bool tipChanged = !string.Equals(_tooltip, trimmed, StringComparison.Ordinal);
         _tooltip = trimmed;
-        if (!_iconAdded) return;
+
+        int nextBucket = brightnessPercent.HasValue
+            ? QuantizeBucket(brightnessPercent.Value)
+            : _currentBucket;
+        bool iconChanged = nextBucket != _currentBucket;
+
+        if (iconChanged)
+        {
+            _currentBucket = nextBucket;
+            _currentIcon = GetOrCreateIcon(_currentBucket);
+        }
+
+        if (!_iconAdded || (!tipChanged && !iconChanged)) return;
 
         var nid = CreateBaseData();
-        nid.uFlags = NativeMethods.NIF_TIP | NativeMethods.NIF_SHOWTIP;
-        nid.szTip = _tooltip;
+        nid.uFlags = NativeMethods.NIF_SHOWTIP;
+
+        if (tipChanged)
+        {
+            nid.uFlags |= NativeMethods.NIF_TIP;
+            nid.szTip = _tooltip;
+        }
+
+        if (iconChanged)
+        {
+            nid.uFlags |= NativeMethods.NIF_ICON;
+            nid.hIcon = _currentIcon;
+        }
+
         NativeMethods.Shell_NotifyIconW(NativeMethods.NIM_MODIFY, ref nid);
     }
 
@@ -70,21 +97,26 @@ public sealed class TrayIconService : IDisposable
         if (_disposed || _isDarkTaskbar == isDarkTaskbar) return;
         _isDarkTaskbar = isDarkTaskbar;
 
-        IntPtr newIcon = CreateSunIcon(_isDarkTaskbar);
-        IntPtr oldIcon = _hIcon;
-        _hIcon = newIcon;
+        // Build the new current icon first, swap it into the tray, then free old cached HICONs.
+        var oldIcons = _iconCache.Values.ToList();
+        _iconCache.Clear();
+
+        _currentIcon = GetOrCreateIcon(_currentBucket);
 
         if (_iconAdded)
         {
             var nid = CreateBaseData();
             nid.uFlags = NativeMethods.NIF_ICON | NativeMethods.NIF_SHOWTIP;
-            nid.hIcon = _hIcon;
+            nid.hIcon = _currentIcon;
             NativeMethods.Shell_NotifyIconW(NativeMethods.NIM_MODIFY, ref nid);
         }
 
-        if (oldIcon != IntPtr.Zero)
+        foreach (IntPtr oldIcon in oldIcons)
         {
-            NativeMethods.DestroyIcon(oldIcon);
+            if (oldIcon != IntPtr.Zero)
+            {
+                NativeMethods.DestroyIcon(oldIcon);
+            }
         }
     }
 
@@ -104,12 +136,27 @@ public sealed class TrayIconService : IDisposable
                rect.Width > 0 && rect.Height > 0;
     }
 
+    private static int QuantizeBucket(int percent) =>
+        Math.Clamp((int)Math.Round(percent / 10.0) * 10, 0, 100);
+
+    private IntPtr GetOrCreateIcon(int bucket)
+    {
+        if (_iconCache.TryGetValue(bucket, out IntPtr existing) && existing != IntPtr.Zero)
+        {
+            return existing;
+        }
+
+        IntPtr created = CreateSunIcon(_isDarkTaskbar, bucket);
+        _iconCache[bucket] = created;
+        return created;
+    }
+
     private void AddOrUpdateIcon(bool isAdd)
     {
         var nid = CreateBaseData();
         nid.uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP | NativeMethods.NIF_SHOWTIP;
         nid.uCallbackMessage = WmTrayCallback;
-        nid.hIcon = _hIcon;
+        nid.hIcon = _currentIcon;
         nid.szTip = _tooltip;
 
         if (NativeMethods.Shell_NotifyIconW(isAdd ? NativeMethods.NIM_ADD : NativeMethods.NIM_MODIFY, ref nid))
@@ -170,29 +217,39 @@ public sealed class TrayIconService : IDisposable
         return IntPtr.Zero;
     }
 
-    private static IntPtr CreateSunIcon(bool isDarkTaskbar)
+    private static IntPtr CreateSunIcon(bool isDarkTaskbar, int brightnessPercent)
     {
         const int size = 32;
+        double t = Math.Clamp(brightnessPercent, 0, 100) / 100.0;
+
         Color fg = isDarkTaskbar
             ? Color.FromRgb(0xF5, 0xF5, 0xF5)
             : Color.FromRgb(0x1E, 0x1E, 0x1E);
 
-        var pen = new Pen(new SolidColorBrush(fg), 2.4)
+        var ringPen = new Pen(new SolidColorBrush(fg), 2.3)
         {
             StartLineCap = PenLineCap.Round,
             EndLineCap = PenLineCap.Round
         };
-        pen.Freeze();
+        ringPen.Freeze();
+
+        var rayPen = new Pen(new SolidColorBrush(fg), 2.3)
+        {
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round
+        };
+        rayPen.Freeze();
 
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
             const double center = size / 2.0;
-            const double ringRadius = 5.4;
-            const double rayInner = 9.4;
-            const double rayOuter = 13.0;
+            const double ringRadius = 4.6;
+            const double rayInner = 8.6;
+            // At 0%, rays are crisp dot-ticks (8.8px); at 100%, full radiant sun rays (14.2px).
+            double rayOuter = 8.8 + (14.2 - 8.8) * t;
 
-            dc.DrawEllipse(null, pen, new Point(center, center), ringRadius, ringRadius);
+            dc.DrawEllipse(null, ringPen, new Point(center, center), ringRadius, ringRadius);
 
             for (int i = 0; i < 8; i++)
             {
@@ -202,7 +259,7 @@ public sealed class TrayIconService : IDisposable
 
                 var p1 = new Point(center + cos * rayInner, center + sin * rayInner);
                 var p2 = new Point(center + cos * rayOuter, center + sin * rayOuter);
-                dc.DrawLine(pen, p1, p2);
+                dc.DrawLine(rayPen, p1, p2);
             }
         }
 
@@ -282,11 +339,15 @@ public sealed class TrayIconService : IDisposable
             _iconAdded = false;
         }
 
-        if (_hIcon != IntPtr.Zero)
+        foreach (IntPtr icon in _iconCache.Values)
         {
-            NativeMethods.DestroyIcon(_hIcon);
-            _hIcon = IntPtr.Zero;
+            if (icon != IntPtr.Zero)
+            {
+                NativeMethods.DestroyIcon(icon);
+            }
         }
+        _iconCache.Clear();
+        _currentIcon = IntPtr.Zero;
 
         _messageWindow.RemoveHook(WndProc);
         _messageWindow.Dispose();
