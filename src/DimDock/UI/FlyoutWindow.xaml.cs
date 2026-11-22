@@ -103,7 +103,6 @@ public partial class FlyoutWindow : Window
         }
 
         var placement = ComputePlacement();
-        IntPtr taskbarHwnd = FindTaskbarWindow(placement.IsTaskbarAtTop);
 
         int startY = placement.IsTaskbarAtTop
             ? placement.TargetYPx - placement.SlideDistancePx
@@ -125,26 +124,26 @@ public partial class FlyoutWindow : Window
                 : placement.TargetYPx + placement.SlideDistancePx;
         }
 
-        if (placement.IsInOverflow)
+        // Keep window directly behind the taskbar in topmost Z-order so it slides out from behind it.
+        PositionWindowNative(hwnd, placement.TaskbarHwnd, placement.TargetXPx, startY);
+
+        if (!wasHidden)
         {
-            DismissTrayOverflowWindow();
+            NativeMethods.SetForegroundWindow(hwnd);
+            Activate();
+            PositionWindowNative(hwnd, placement.TaskbarHwnd, placement.TargetXPx, startY);
         }
 
-        NativeMethods.SetForegroundWindow(hwnd);
-        Activate();
-
-        // Keep window directly behind Shell_TrayWnd in topmost Z-order so it slides out from behind the taskbar.
-        PositionWindowNative(hwnd, taskbarHwnd, placement.TargetXPx, startY);
-
         // If the window was just shown from hidden, wait 2 render frames while cloaked so WPF finishes
-        // presenting its painted surface before uncloaking and starting the slide.
+        // presenting its painted surface before uncloaking, taking focus (which dismisses the overflow dock),
+        // and starting the slide.
         StartSlideAnimation(
             opening: true,
             xPx: placement.TargetXPx,
             startYPx: startY,
             endYPx: placement.TargetYPx,
             durationMs: OpenDurationMs,
-            insertAfter: taskbarHwnd,
+            insertAfter: placement.TaskbarHwnd,
             warmupFrames: wasHidden ? 2 : 0);
     }
 
@@ -167,7 +166,6 @@ public partial class FlyoutWindow : Window
         _isHidingAnimated = true;
 
         var placement = ComputePlacement();
-        IntPtr taskbarHwnd = FindTaskbarWindow(placement.IsTaskbarAtTop);
         int currentYPx = (int)Math.Round(Top * placement.Scale);
         int endYPx = placement.IsTaskbarAtTop
             ? placement.TargetYPx - placement.SlideDistancePx
@@ -179,7 +177,7 @@ public partial class FlyoutWindow : Window
             startYPx: currentYPx,
             endYPx: endYPx,
             durationMs: CloseDurationMs,
-            insertAfter: taskbarHwnd);
+            insertAfter: placement.TaskbarHwnd);
     }
 
     public void SyncUiState()
@@ -310,9 +308,10 @@ public partial class FlyoutWindow : Window
                 {
                     PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
                     SetCloaked(hwnd, false);
-                    // Re-assert foreground once uncloaked so Windows Shell sees the focus transfer
-                    // (which cleanly dismisses the tray overflow popup and ensures Deactivated fires).
+                    // Take foreground focus AFTER uncloaking (and after Explorer finishes its click)
+                    // so Windows Shell cleanly dismisses the overflow dock and enables Deactivated/Escape.
                     NativeMethods.SetForegroundWindow(hwnd);
+                    Activate();
                     PositionWindowNative(hwnd, _animInsertAfter, _animX, _animStartY);
                 }
                 _animStartTicks = Stopwatch.GetTimestamp();
@@ -368,25 +367,29 @@ public partial class FlyoutWindow : Window
         NativeMethods.SetWindowPos(hwnd, insertAfter, xPx, yPx, 0, 0, flags);
     }
 
-    private static IntPtr FindTaskbarWindow(bool isTop)
+    private static (IntPtr Hwnd, RECT Rect) FindTaskbarForMonitor(RECT monitorRect)
     {
-        _ = isTop;
-        return NativeMethods.FindWindowW("Shell_TrayWnd", null);
-    }
-
-    private static void DismissTrayOverflowWindow()
-    {
-        string[] overflowClasses = ["TopLevelWindowForOverflowXamlIsland", "NotifyIconOverflowWindow"];
-        foreach (string className in overflowClasses)
+        IntPtr primary = NativeMethods.FindWindowW("Shell_TrayWnd", null);
+        if (primary != IntPtr.Zero && NativeMethods.GetWindowRect(primary, out RECT primaryRect) &&
+            RectsOverlap(primaryRect, monitorRect))
         {
-            IntPtr overflowHwnd = NativeMethods.FindWindowW(className, null);
-            if (overflowHwnd != IntPtr.Zero && NativeMethods.IsWindowVisible(overflowHwnd))
+            return (primary, primaryRect);
+        }
+
+        IntPtr secondary = IntPtr.Zero;
+        while ((secondary = NativeMethods.FindWindowExW(IntPtr.Zero, secondary, "Shell_SecondaryTrayWnd", null)) != IntPtr.Zero)
+        {
+            if (NativeMethods.GetWindowRect(secondary, out RECT secRect) && RectsOverlap(secRect, monitorRect))
             {
-                NativeMethods.PostMessageW(overflowHwnd, NativeMethods.WM_KEYDOWN, (IntPtr)NativeMethods.VK_ESCAPE, IntPtr.Zero);
-                NativeMethods.PostMessageW(overflowHwnd, NativeMethods.WM_KEYUP, (IntPtr)NativeMethods.VK_ESCAPE, IntPtr.Zero);
+                return (secondary, secRect);
             }
         }
+
+        return (primary, default);
     }
+
+    private static bool RectsOverlap(RECT a, RECT b) =>
+        a.Left < b.Right && a.Right > b.Left && a.Top < b.Bottom && a.Bottom > b.Top;
 
     private readonly record struct FlyoutPlacement(
         int TargetXPx,
@@ -394,7 +397,7 @@ public partial class FlyoutWindow : Window
         int SlideDistancePx,
         double Scale,
         bool IsTaskbarAtTop,
-        bool IsInOverflow);
+        IntPtr TaskbarHwnd);
 
     private FlyoutPlacement ComputePlacement()
     {
@@ -426,48 +429,62 @@ public partial class FlyoutWindow : Window
         var mi = new MONITORINFOEX { cbSize = (uint)Marshal.SizeOf<MONITORINFOEX>() };
         if (!NativeMethods.GetMonitorInfoW(hMonitor, ref mi))
         {
-            return new FlyoutPlacement(0, 0, 52, 1.0, false, false);
+            return new FlyoutPlacement(0, 0, 52, 1.0, false, IntPtr.Zero);
         }
 
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         uint dpi = hwnd != IntPtr.Zero ? NativeMethods.GetDpiForWindow(hwnd) : 96;
         double scale = dpi > 0 ? dpi / 96.0 : 1.0;
 
+        var (taskbarHwnd, taskbarRect) = FindTaskbarForMonitor(mi.rcMonitor);
+        bool hasTaskbarRect = taskbarHwnd != IntPtr.Zero && taskbarRect.Width > 0 && taskbarRect.Height > 0;
+
+        // Account for auto-hide taskbars: when auto-hide is enabled, rcWork equals rcMonitor,
+        // so use the taskbar's live GetWindowRect top/bottom when it is popped up on screen.
+        int effectiveBottomPx = mi.rcWork.Bottom;
+        int effectiveTopPx = mi.rcWork.Top;
+        bool isTaskbarAtTop = false;
+
+        if (hasTaskbarRect)
+        {
+            int midY = (mi.rcMonitor.Top + mi.rcMonitor.Bottom) / 2;
+            bool taskbarIsHorizontal = taskbarRect.Width > taskbarRect.Height;
+
+            if (taskbarIsHorizontal && taskbarRect.Top > midY && taskbarRect.Top < mi.rcMonitor.Bottom - 4)
+            {
+                // Bottom taskbar (always-visible OR popped-up auto-hide)
+                effectiveBottomPx = Math.Min(effectiveBottomPx, taskbarRect.Top);
+            }
+            else if (taskbarIsHorizontal && taskbarRect.Bottom < midY && taskbarRect.Bottom > mi.rcMonitor.Top + 4)
+            {
+                // Top taskbar
+                isTaskbarAtTop = true;
+                effectiveTopPx = Math.Max(effectiveTopPx, taskbarRect.Bottom);
+            }
+        }
+
         double workLeft = mi.rcWork.Left / scale;
-        double workTop = mi.rcWork.Top / scale;
         double workRight = mi.rcWork.Right / scale;
-        double workBottom = mi.rcWork.Bottom / scale;
+        double effectiveTop = effectiveTopPx / scale;
+        double effectiveBottom = effectiveBottomPx / scale;
 
         double w = ActualWidth > 0 ? ActualWidth : Width;
         double h = ActualHeight > 0 ? ActualHeight : (DesiredSize.Height > 0 ? DesiredSize.Height : 145);
         const double margin = 12.0;
 
-        bool isTaskbarAtTop = false;
+        // True overflow detection that works with both normal and auto-hide taskbars:
+        // if the tray icon rect sits outside the taskbar rect, it is inside the overflow dock.
         bool isInOverflow = false;
-        double targetTop = workBottom - h - margin;
-
-        if (hasTrayRect)
+        if (hasTrayRect && hasTaskbarRect)
         {
-            double trayTopDip = trayRect.Top / scale;
-            double trayBottomDip = trayRect.Bottom / scale;
-
-            if (trayBottomDip <= workTop + 16)
-            {
-                isTaskbarAtTop = true;
-                targetTop = workTop + margin;
-            }
-            else if (trayTopDip >= workBottom - 16)
-            {
-                targetTop = workBottom - h - margin;
-            }
-            else
-            {
-                // Icon is inside the Windows 11 tray overflow dock:
-                // anchor cleanly in the bottom-right corner above the taskbar (like Quick Settings).
-                isInOverflow = true;
-                targetTop = workBottom - h - margin;
-            }
+            isInOverflow = isTaskbarAtTop
+                ? trayRect.Top >= taskbarRect.Bottom
+                : trayRect.Bottom <= taskbarRect.Top;
         }
+
+        double targetTop = isTaskbarAtTop
+            ? effectiveTop + margin
+            : effectiveBottom - h - margin;
 
         double targetLeft = (!hasTrayRect || isInOverflow)
             ? workRight - w - margin
@@ -484,19 +501,19 @@ public partial class FlyoutWindow : Window
                 new POINT { X = anchorPx.X, Y = mi.rcMonitor.Top - 10 },
                 0); // MONITOR_DEFAULTTONULL
             slideDistancePx = aboveMon == IntPtr.Zero
-                ? (int)Math.Round((h + margin) * scale)
-                : Math.Max(48, mi.rcWork.Top - mi.rcMonitor.Top);
+                ? Math.Max(48, targetYPx + (int)Math.Round(h * scale) - effectiveTopPx)
+                : Math.Max(48, effectiveTopPx - mi.rcMonitor.Top);
         }
         else
         {
             IntPtr belowMon = NativeMethods.MonitorFromPoint(
                 new POINT { X = anchorPx.X, Y = mi.rcMonitor.Bottom + 10 },
                 0); // MONITOR_DEFAULTTONULL
-            // Slide completely out from behind the taskbar (top edge starts at rcWork.Bottom)
+            // Slide completely out from behind the taskbar (top edge starts at effectiveBottomPx)
             // just like Windows 11 Control Center, unless another monitor is stacked underneath.
             slideDistancePx = belowMon == IntPtr.Zero
-                ? Math.Max(48, mi.rcWork.Bottom - targetYPx)
-                : Math.Max(48, mi.rcMonitor.Bottom - mi.rcWork.Bottom);
+                ? Math.Max(48, effectiveBottomPx - targetYPx)
+                : Math.Max(48, mi.rcMonitor.Bottom - effectiveBottomPx);
         }
 
         return new FlyoutPlacement(
@@ -505,7 +522,7 @@ public partial class FlyoutWindow : Window
             SlideDistancePx: slideDistancePx,
             Scale: scale,
             IsTaskbarAtTop: isTaskbarAtTop,
-            IsInOverflow: isInOverflow);
+            TaskbarHwnd: taskbarHwnd);
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
