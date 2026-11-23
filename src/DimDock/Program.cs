@@ -11,6 +11,7 @@ internal static class Program
     {
         // Must run first so Velopack install/update/uninstall hooks exit cleanly and fast.
         VelopackApp.Build()
+            .OnAfterInstallFastCallback(_ => new StartupService().SetEnabled(true))
             .OnBeforeUninstallFastCallback(_ => new StartupService().SetEnabled(false))
             .Run();
 

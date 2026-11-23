@@ -77,7 +77,7 @@ jobs:
             '--mainExe', 'DimDock.exe',
             '--packTitle', 'Dim Dock',
             '--packAuthors', 'ohivan',
-            '--shortcuts', 'None',
+            '--shortcuts', 'StartMenuRoot',
             '--outputDir', 'Releases'
           )
           if (Test-Path 'src/DimDock/Assets/DimDock.ico') {
