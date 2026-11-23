@@ -82,6 +82,7 @@ function initCopyButtons() {
     let pulseTimer = null;
 
     btn.addEventListener("click", async () => {
+      if (btn.disabled) return;
       try {
         await navigator.clipboard.writeText(cmdText);
       } catch {
@@ -569,9 +570,11 @@ function initHeroFlyoutPanel() {
       const thumb = document.querySelector(`[data-hero-slider-thumb="${monitor.id}"]`);
       const valueEl = document.querySelector(`[data-hero-monitor-value="${monitor.id}"]`);
 
+      const ratio = monitor.brightness / 100;
+      const trackPos = `calc(8px * var(--s, 1) + (100% - 16px * var(--s, 1)) * ${ratio})`;
       if (input) input.value = String(monitor.brightness);
-      if (fill) fill.style.width = `${monitor.brightness}%`;
-      if (thumb) thumb.style.left = `${monitor.brightness}%`;
+      if (fill) fill.style.width = trackPos;
+      if (thumb) thumb.style.left = trackPos;
       if (valueEl) valueEl.textContent = String(monitor.brightness);
     }
 
@@ -783,7 +786,7 @@ function initHeroFlyoutPanel() {
 }
 
 function triggerIntroGlint(el) {
-  if (!el) return;
+  if (!el || el.classList.contains("is-pending")) return;
   el.classList.remove("is-intro-glint");
   void el.offsetWidth;
   el.classList.add("is-intro-glint");
